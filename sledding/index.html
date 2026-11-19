@@ -38,7 +38,10 @@ canvas { display:block; width:100%; height:100%; touch-action:none; }
 .cap { position:absolute; left:50%; bottom:calc(16px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%); max-width:min(900px, calc(100% - 32px)); background:var(--scrim); color:var(--cap); font:700 1.1rem/1.45 var(--read); padding:12px 24px; border-radius:12px; text-align:center; }
 .steer { position:absolute; bottom:calc(96px + env(safe-area-inset-bottom,0px)); display:none; width:88px; height:88px; font-size:1.1rem; border-radius:999px; }
 .steer.l { left:max(16px,env(safe-area-inset-left,0px)); } .steer.r { right:max(16px,env(safe-area-inset-right,0px)); }
-@media (pointer:coarse) { .steer { display:block; } }
+@media (pointer:coarse) { :root[data-steer="on"] .steer { display:block; } }
+/* phones: a long press on the snow or a button must not open copy/paste or a picture menu */
+button, canvas, .steer, img { -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+.steer { touch-action:none; }
 .drone { position:absolute; top:12px; left:max(12px,env(safe-area-inset-left,0px)); display:flex; align-items:center; gap:8px; padding:4px 16px 4px 4px; background:var(--panel); border:3px solid var(--line); border-radius:999px; font-weight:700; }
 .drone[hidden] { display:none; }
 .drone img { width:60px; height:52px; object-fit:contain; }
@@ -111,7 +114,7 @@ canvas { display:block; width:100%; height:100%; touch-action:none; }
           <h2>Sledding on River Hill</h2>
           <p>The long slope from River Street runs down, down, down to the Blackstone River. The drone will watch from above while Clara and Bernie slide.</p>
           <ul>
-            <li>Steer with the <b>left and right arrow keys</b>, or drag on the snow.</li>
+            <li>Steer with the <b>left and right arrow keys</b>, or slide your finger on the snow.</li>
             <li><b>Up arrow</b> goes faster. <b>Down arrow</b> goes slower.</li>
             <li>Burst through snowballs. Bushes just give a soft bump.</li>
             <li>There is no timer and no way to lose.</li>
@@ -153,6 +156,7 @@ canvas { display:block; width:100%; height:100%; touch-action:none; }
         <div class="set"><b>Drone camera label on screen</b><div class="seg" data-key="drone"><button data-v="off">Hide</button><button data-v="on">Show</button></div></div>
         <div class="set"><b>Clara's voice</b><div class="seg" data-key="voice"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
         <div class="set"><b>Sound captions</b><div class="seg" data-key="caps"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="set"><b>Left and Right buttons (phones and tablets; you can also slide a finger on the snow)</b><div class="seg" data-key="steer"><button data-v="off">Hide</button><button data-v="on">Show</button></div></div>
         <div class="set"><b>Calm motion (no falling snow, gentler speed)</b><div class="seg" data-key="calm"><button data-v="off">Off</button><button data-v="on">On</button></div></div>
         <div class="row"><button class="primary" id="setDone">Done</button></div>
       </div></div>
@@ -171,7 +175,7 @@ function lset(k,v){ try { localStorage.setItem(k,v); } catch(e){} }
 
 /* ---------- settings ---------- */
 var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-var S = { voice: lget('rh-voice')||'on', look: lget('rh-look')||'dusk', size: lget('rh-size')||'1', music: lget('rh-music')||'on', sfx: lget('rh-sfx')||'on', caps: lget('rh-caps')||'on', drone: lget('rh-drone')||'off', calm: lget('rh-calm')||(reduce?'on':'off') };
+var S = { voice: lget('rh-voice')||'on', look: lget('rh-look')||'dusk', size: lget('rh-size')||'1', music: lget('rh-music')||'on', sfx: lget('rh-sfx')||'on', caps: lget('rh-caps')||'on', drone: lget('rh-drone')||'off', steer: lget('rh-steer')||'off', calm: lget('rh-calm')||(reduce?'on':'off') };
 function applySettings(){
   if (S.look==='dusk') root.removeAttribute('data-look'); else root.setAttribute('data-look',S.look);
   root.style.setProperty('--scale', S.size);
@@ -181,6 +185,7 @@ function applySettings(){
   A.music.volume = S.music==='on' ? 0.28 : 0;
   if (S.caps!=='on') $('cap').hidden = true;
   $('droneBadge').hidden = S.drone!=='on';
+  root.setAttribute('data-steer', S.steer);
   resize();
 }
 document.querySelectorAll('.seg[data-key]').forEach(function(seg){
@@ -276,8 +281,10 @@ cv.addEventListener('pointerdown', function(e){ drag=e.offsetX; cv.setPointerCap
 cv.addEventListener('pointermove', function(e){ if(drag!==null) drag=e.offsetX; });
 cv.addEventListener('pointerup', function(){ drag=null; });
 cv.addEventListener('pointercancel', function(){ drag=null; });
+cv.addEventListener('contextmenu', function(e){ e.preventDefault(); });
 function holdBtn(id,dir){ var b=$(id);
   b.addEventListener('pointerdown', function(e){ e.preventDefault(); hold=dir; });
+  b.addEventListener('contextmenu', function(e){ e.preventDefault(); });
   ['pointerup','pointerleave','pointercancel'].forEach(function(ev){ b.addEventListener(ev, function(){ if(hold===dir) hold=0; }); });
 }
 holdBtn('leftBtn',-1); holdBtn('rightBtn',1);
