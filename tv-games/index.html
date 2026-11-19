@@ -275,8 +275,8 @@ function updPong(dt){
   var d2=0;
   if(mode===2){ d2=(keys.ArrowUp?-1:0)+(keys.ArrowDown?1:0)+padAxis(1); d2=Math.max(-1,Math.min(1,d2)); }
   else {
-    var b=G.ball, wake={gentle:0.55,normal:0.4,lively:0.25}[S.speed]||0.55;
-    var aim = (b.vx>0 && b.x>SW*wake) ? b.y+G.aimErr : SH/2, lag=Math.min(1,({gentle:0.38,normal:0.55,lively:0.8}[S.speed]||0.38)*(1+0.1*(LEVEL-1)));
+    var b=G.ball, wake={gentle:0.4,normal:0.35,lively:0.25}[S.speed]||0.4;   // Easy: the computer starts moving sooner (Tina: on Easy it missed every ball)
+    var aim = (b.vx>0 && b.x>SW*wake) ? b.y+G.aimErr : SH/2, lag=Math.min(1,({gentle:0.6,normal:0.7,lively:0.9}[S.speed]||0.6)*(1+0.1*(LEVEL-1)));
     var diff=aim-G.p2.y; d2=Math.max(-lag,Math.min(lag,diff/8));
   }
   G.p2.y+=d2*pv*dt; joyTilt2+=(d2-joyTilt2)*Math.min(1,dt*14);
@@ -297,7 +297,7 @@ function hitPaddle(p,px,dir){
       G.hits++; var sp=Math.min(speedBase()*1.9, Math.hypot(b.vx,b.vy)*1.04);
       var ang=off*0.85; b.vx=Math.cos(ang)*sp*dir; b.vy=Math.sin(ang)*sp; b.x=px+dir*3;
       beep(480,0.06,'square',0.07); pressFlash=0.15;
-      if(dir===1) G.aimErr=(Math.random()*2-1)*({gentle:20,normal:11,lively:4}[S.speed]||14)/(1+0.15*(LEVEL-1));
+      if(dir===1) G.aimErr=(Math.random()*2-1)*({gentle:12,normal:7,lively:4}[S.speed]||12)/(1+0.15*(LEVEL-1));
     }
   }
 }
