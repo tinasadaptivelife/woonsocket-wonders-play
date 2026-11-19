@@ -84,7 +84,7 @@
       94,501  basketball/audio/voice/joe-sideways-4.mp3
      100,771  basketball/audio/voice/joe-start-1.mp3
       85,724  basketball/audio/voice/joe-start-2.mp3
-      51,274  basketball/index.html
+      51,276  basketball/index.html
      109,411  igloo/art/backyard.jpg
      210,936  igloo/art/bernie-jump.png
       26,285  igloo/art/clara-face.jpg
@@ -159,7 +159,7 @@
       16,761  igloo/audio/voice/joe-throw-1.mp3
       24,284  igloo/audio/voice/joe-throw-2.mp3
       64,826  igloo/audio/voice/joe-win-1.mp3
-      56,635  igloo/index.html
+      56,637  igloo/index.html
        7,710  index.html
      606,374  marbles/art/bernie-top.png
       26,285  marbles/art/clara-face.jpg
@@ -258,7 +258,7 @@
      100,771  marbles/audio/voice/dad-tipRs-1.mp3
       61,901  marbles/audio/voice/dad-tipS-1.mp3
       43,510  marbles/audio/voice/dad-tipSs-1.mp3
-      58,112  marbles/index.html
+      58,114  marbles/index.html
       26,285  river/art/clara-face.jpg
      110,030  river/art/crow-empty.png
      110,072  river/art/crow.png
@@ -307,7 +307,7 @@
      105,369  river/audio/voice/razzle-start-2.mp3
       65,663  river/audio/voice/razzle-wait-1.mp3
      100,354  river/audio/voice/razzle-win-1.mp3
-      51,182  river/index.html
+      51,549  river/index.html
      202,785  sledding/art/bare-tree.png
      253,892  sledding/art/bernie-run.png
       26,285  sledding/art/clara-face.jpg
@@ -346,7 +346,7 @@
       34,734  sledding/audio/voice/clara-start-2.mp3
       65,382  sledding/audio/voice/narrator-best-hill.mp3
      284,393  sledding/audio/voice/narrator-river-hill.mp3
-      45,584  sledding/index.html
+      45,586  sledding/index.html
    1,108,033  tools/app-icon.png
       26,285  tv-games/art/clara-face.jpg
      134,932  tv-games/art/joystick.png
@@ -367,6 +367,6 @@
       40,586  tv-games/audio/voice/clara-start-1.mp3
       36,406  tv-games/audio/voice/clara-start-2.mp3
       39,332  tv-games/audio/voice/clara-win-1.mp3
-      75,719  tv-games/index.html
+      76,146  tv-games/index.html
 
 370 files, 82.7 MB

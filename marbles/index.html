@@ -133,7 +133,7 @@ canvas { display:block; width:100%; height:100%; touch-action:none; }
         <div class="set"><b>Music</b><div class="seg" data-key="music"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
         <div class="set"><b>Sounds</b><div class="seg" data-key="sfx"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
         <div class="set"><b>Dad's voice</b><div class="seg" data-key="voice"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
-        <div class="set"><b>Sound captions</b><div class="seg" data-key="caps"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="set"><b>Sound captions</b><div class="seg" data-key="caps"><button data-v="off">Off</button><button data-v="on">On</button></div></div>
         <div class="set"><b>Calm motion (Bernie walks in slowly, no lamp flicker)</b><div class="seg" data-key="calm"><button data-v="off">Off</button><button data-v="on">On</button></div></div>
         <div class="row"><button class="primary" id="setDone">Done</button></div>
       </div></div>
@@ -158,7 +158,7 @@ var $=function(id){return document.getElementById(id);}, root=document.documentE
 function lget(k){try{return localStorage.getItem(k);}catch(e){return null;}}
 function lset(k,v){try{localStorage.setItem(k,v);}catch(e){}}
 var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
-var S={ bernie:lget('mb-bernie')||'start', look:lget('mb-look')||'dusk', size:lget('mb-size')||'1', guide:lget('mb-guide')||'on', level:lget('mb-level')||(lget('mb-kind')==='fair'?'hard':'easy'), pace:lget('mb-pace')||'slow', music:lget('mb-music')||'on', sfx:lget('mb-sfx')||'on', caps:lget('mb-caps')||'on', voice:lget('mb-voice')||'on', calm:lget('mb-calm')||(reduce?'on':'off') };
+var S={ bernie:lget('mb-bernie')||'start', look:lget('mb-look')||'dusk', size:lget('mb-size')||'1', guide:lget('mb-guide')||'on', level:lget('mb-level')||(lget('mb-kind')==='fair'?'hard':'easy'), pace:lget('mb-pace')||'slow', music:lget('mb-music')||'on', sfx:lget('mb-sfx')||'on', caps:lget('mb-caps')||'off', voice:lget('mb-voice')||'on', calm:lget('mb-calm')||(reduce?'on':'off') };
 
 /* ---------- sound ---------- */
 function snd(src,loop,vol){ var a=new Audio(src); a.loop=!!loop; a.volume=vol; a.preload='auto'; return a; }
@@ -658,13 +658,13 @@ resize(); newGame(); apply(); draw();
   function g(k){ try{ return localStorage.getItem(P+k); }catch(e){ return null; } }
   function s(k,v){ try{ localStorage.setItem(P+k,v); }catch(e){} }
   var small=(innerWidth<760 || innerHeight<560);
-  var st={ panels:g('panels')||(small?'folded':'open'), box:g('box')||(small?'s':'m'), words:g('wordsbox')||'on' };
+  var st={ panels:g('panels')||(small?'folded':'open'), box:g('box')||(small?'s':'m'), words:g('wordsbox')||'off' };
   var bar=document.querySelector('.bar'), btn=document.createElement('button'); btn.id='panelsBtn'; btn.type='button';
   bar.insertBefore(btn, bar.firstChild);
   btn.addEventListener('click',function(){ st.panels= st.panels==='folded'?'open':'folded'; s('panels',st.panels); apply(); btn.blur(); });
   var rows=[['panels','Panels (top bar and buttons)',[['open','Full size'],['folded','Folded small']]],
             ['box','Speech box size',[['s','Small'],['m','Medium'],['l','Large']]]];
-  if(true) rows.push(['words','Speech boxes',[['on','Show the words'],['off','Voice only']]]);
+  if(true) rows.push(['words','Speech boxes',[['off','Voice only'],['on','Show the words']]]);
   var done=document.getElementById('setDone').closest('.row');
   rows.forEach(function(row){ var d=document.createElement('div'); d.className='set';
     d.innerHTML='<b>'+row[1]+'</b><div class="seg" data-k2="'+row[0]+'">'+row[2].map(function(o){ return '<button type="button" data-v2="'+o[0]+'">'+o[1]+'</button>'; }).join('')+'</div>';

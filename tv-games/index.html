@@ -36,6 +36,7 @@ canvas { display:block; width:100%; height:100%; touch-action:none; }
 .touch { position:absolute; right:max(16px,env(safe-area-inset-right,0px)); bottom:calc(90px + env(safe-area-inset-bottom,0px)); display:none; flex-direction:column; gap:12px; }
 .touch button { width:96px; height:80px; font-size:1.1rem; }
 .touch { display:flex; }
+:root:not([data-pad="on"]) .touch { display:none; }
 .over { position:absolute; inset:0; display:grid; place-items:safe center; padding:24px max(16px,env(safe-area-inset-left,0px)); background:rgba(20,18,16,.55); overflow:auto; }
 .over[hidden] { display:none; }
 .sheet { width:min(820px,100%); background:var(--panel); border:3px solid var(--line); border-radius:18px; overflow:hidden; display:grid; }
@@ -118,9 +119,9 @@ canvas { display:block; width:100%; height:100%; touch-action:none; }
           <div class="set"><span class="gname">Franky's Candy Maze</span><p>Collect every sugar drop between the candy jars in Bonbons du Temps Passé. Wisps of forgetting fog drift after you. A Hope Chocolate makes the fog fade and float away.</p>
             <div class="row"><button class="primary" id="mazeBtn">Play Franky's Candy Maze</button></div></div>
           <ul>
-            <li><b>Move:</b> your mouse or trackpad over the room, the arrow keys, the big buttons, or a joystick or game controller. In the Candy Maze, Clara keeps walking and turns at the next corner you choose.</li>
+            <li><b>Move:</b> your mouse or trackpad over the room, your finger on the TV, the arrow keys, the big buttons (Settings: On-screen buttons), or a joystick or game controller. In the Candy Maze, Clara keeps walking and turns at the next corner you choose.</li>
             <li><b>Snowballs</b> throw by themselves (Auto throw in Settings). You can also press the <b>space bar</b> or the <b>Throw</b> button.</li>
-            <li><b>Pinball flippers:</b> left arrow (or Z) and right arrow (or M), the Left and Right buttons, or click the left or right half of the room. The ball launches by itself, or press the space bar.</li>
+            <li><b>Pinball flippers:</b> left arrow (or Z) and right arrow (or M), the Left and Right buttons, or click or tap the left or right half of the room. The ball launches by itself, or press the space bar.</li>
             <li>Paddle Ball two players: the left player uses <b>W and S</b>, the right player uses the <b>arrow keys</b>.</li>
           </ul>
           <p class="note">These are original games made for The Woonsocket Wonders.</p>
@@ -143,12 +144,13 @@ canvas { display:block; width:100%; height:100%; touch-action:none; }
         <div class="set"><b>Look</b><div class="seg" data-key="look"><button data-v="dusk">Dark soft</button><button data-v="sand">Dim sand</button><button data-v="light">Light</button><button data-v="contrast">Extra contrast</button></div></div>
         <div class="set"><b>Text size</b><div class="seg" data-key="size"><button data-v="1">Large</button><button data-v="1.2">Larger</button><button data-v="1.4">Largest</button></div></div>
         <div class="set"><b>Difficulty</b><div class="seg" data-key="speed"><button data-v="gentle">Easy</button><button data-v="normal">Medium</button><button data-v="lively">Hard</button></div></div>
+        <div class="set"><b>On-screen buttons (Up, Down, Throw, Launch, Left, Right). You can also move with your finger on the TV.</b><div class="seg" data-key="pad"><button data-v="off">Hide</button><button data-v="on">Show</button></div></div>
         <div class="set"><b>Paddle size</b><div class="seg" data-key="paddle"><button data-v="big">Big</button><button data-v="normal">Normal</button></div></div>
         <div class="set"><b>Auto throw (Snowflake Storm)</b><div class="seg" data-key="auto"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
         <div class="set"><b>Music</b><div class="seg" data-key="music"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
         <div class="set"><b>Sounds</b><div class="seg" data-key="sfx"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
         <div class="set"><b>Clara's voice</b><div class="seg" data-key="voice"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
-        <div class="set"><b>Sound captions</b><div class="seg" data-key="caps"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="set"><b>Sound captions</b><div class="seg" data-key="caps"><button data-v="off">Off</button><button data-v="on">On</button></div></div>
         <div class="row"><button class="primary" id="setDone">Done</button></div>
       </div></div>
     </div>
@@ -164,7 +166,7 @@ function lget(k){try{return localStorage.getItem(k);}catch(e){return null;}}
 function lset(k,v){try{localStorage.setItem(k,v);}catch(e){}}
 
 /* ---------- settings ---------- */
-var S={ music: lget('tv-music')||'on', voice: lget('tv-voice')||'on', look:lget('tv-look')||'dusk', size:lget('tv-size')||'1', speed:lget('tv-speed')||'gentle', paddle:lget('tv-paddle')||'big', sfx:lget('tv-sfx')||'on', caps:lget('tv-caps')||'on', auto:lget('tv-auto')||'on', lvl:lget('tv-lvl')||'1' };
+var S={ music: lget('tv-music')||'on', voice: lget('tv-voice')||'on', look:lget('tv-look')||'dusk', size:lget('tv-size')||'1', speed:lget('tv-speed')||'gentle', paddle:lget('tv-paddle')||'big', sfx:lget('tv-sfx')||'on', caps:lget('tv-caps')||'off', pad:lget('tv-pad')||'off', auto:lget('tv-auto')||'on', lvl:lget('tv-lvl')||'1' };
 /* levels (Tina, 2026-11-17): every game has 5 levels; each level a little faster and trickier */
 var LEVEL=1, MAXL=5, NEXT=false;
 function lvlMul(){ return 1+0.12*(LEVEL-1); }
@@ -172,6 +174,7 @@ function apply(){
   if(typeof tvMusic!=='undefined'){ if(S.music!=='on') tvMusic.pause(); else if(running && !paused && tvMusic.getAttribute('src')){ var mp=tvMusic.play(); if(mp&&mp.catch) mp.catch(function(){}); } }
   if(S.look==='dusk') root.removeAttribute('data-look'); else root.setAttribute('data-look',S.look);
   root.style.setProperty('--scale',S.size);
+  root.setAttribute('data-pad',S.pad);
   document.querySelectorAll('.seg[data-key]').forEach(function(seg){ seg.querySelectorAll('button').forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.v===S[seg.dataset.key]?'true':'false'); }); });
   if(S.caps!=='on') $('cap').hidden=true;
   if(G && G.p1){ G.p1.h=paddleH(); G.p2.h= mode===1 ? 16 : paddleH(); }
@@ -867,13 +870,13 @@ resize(); newGame(1); apply(); draw();
   function g(k){ try{ return localStorage.getItem(P+k); }catch(e){ return null; } }
   function s(k,v){ try{ localStorage.setItem(P+k,v); }catch(e){} }
   var small=(innerWidth<760 || innerHeight<560);
-  var st={ panels:g('panels')||(small?'folded':'open'), box:g('box')||(small?'s':'m'), words:g('wordsbox')||'on' };
+  var st={ panels:g('panels')||(small?'folded':'open'), box:g('box')||(small?'s':'m'), words:g('wordsbox')||'off' };
   var bar=document.querySelector('.bar'), btn=document.createElement('button'); btn.id='panelsBtn'; btn.type='button';
   bar.insertBefore(btn, bar.firstChild);
   btn.addEventListener('click',function(){ st.panels= st.panels==='folded'?'open':'folded'; s('panels',st.panels); apply(); btn.blur(); });
   var rows=[['panels','Panels (top bar and buttons)',[['open','Full size'],['folded','Folded small']]],
             ['box','Speech box size',[['s','Small'],['m','Medium'],['l','Large']]]];
-  if(true) rows.push(['words','Speech boxes',[['on','Show the words'],['off','Voice only']]]);
+  if(true) rows.push(['words','Speech boxes',[['off','Voice only'],['on','Show the words']]]);
   var done=document.getElementById('setDone').closest('.row');
   rows.forEach(function(row){ var d=document.createElement('div'); d.className='set';
     d.innerHTML='<b>'+row[1]+'</b><div class="seg" data-k2="'+row[0]+'">'+row[2].map(function(o){ return '<button type="button" data-v2="'+o[0]+'">'+o[1]+'</button>'; }).join('')+'</div>';

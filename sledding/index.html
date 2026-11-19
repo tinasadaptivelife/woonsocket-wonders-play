@@ -155,7 +155,7 @@ button, canvas, .steer, img { -webkit-user-select:none; user-select:none; -webki
         <div class="set"><b>Sounds</b><div class="seg" data-key="sfx"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
         <div class="set"><b>Drone camera label on screen</b><div class="seg" data-key="drone"><button data-v="off">Hide</button><button data-v="on">Show</button></div></div>
         <div class="set"><b>Clara's voice</b><div class="seg" data-key="voice"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
-        <div class="set"><b>Sound captions</b><div class="seg" data-key="caps"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="set"><b>Sound captions</b><div class="seg" data-key="caps"><button data-v="off">Off</button><button data-v="on">On</button></div></div>
         <div class="set"><b>Left and Right buttons (phones and tablets; you can also slide a finger on the snow)</b><div class="seg" data-key="steer"><button data-v="off">Hide</button><button data-v="on">Show</button></div></div>
         <div class="set"><b>Calm motion (no falling snow, gentler speed)</b><div class="seg" data-key="calm"><button data-v="off">Off</button><button data-v="on">On</button></div></div>
         <div class="row"><button class="primary" id="setDone">Done</button></div>
@@ -175,7 +175,7 @@ function lset(k,v){ try { localStorage.setItem(k,v); } catch(e){} }
 
 /* ---------- settings ---------- */
 var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-var S = { voice: lget('rh-voice')||'on', look: lget('rh-look')||'dusk', size: lget('rh-size')||'1', music: lget('rh-music')||'on', sfx: lget('rh-sfx')||'on', caps: lget('rh-caps')||'on', drone: lget('rh-drone')||'off', steer: lget('rh-steer')||'off', calm: lget('rh-calm')||(reduce?'on':'off') };
+var S = { voice: lget('rh-voice')||'on', look: lget('rh-look')||'dusk', size: lget('rh-size')||'1', music: lget('rh-music')||'on', sfx: lget('rh-sfx')||'on', caps: lget('rh-caps')||'off', drone: lget('rh-drone')||'off', steer: lget('rh-steer')||'off', calm: lget('rh-calm')||(reduce?'on':'off') };
 function applySettings(){
   if (S.look==='dusk') root.removeAttribute('data-look'); else root.setAttribute('data-look',S.look);
   root.style.setProperty('--scale', S.size);
@@ -577,13 +577,13 @@ resize(); applySettings(); newRun(); draw();
   function g(k){ try{ return localStorage.getItem(P+k); }catch(e){ return null; } }
   function s(k,v){ try{ localStorage.setItem(P+k,v); }catch(e){} }
   var small=(innerWidth<760 || innerHeight<560);
-  var st={ panels:g('panels')||(small?'folded':'open'), box:g('box')||(small?'s':'m'), words:g('wordsbox')||'on' };
+  var st={ panels:g('panels')||(small?'folded':'open'), box:g('box')||(small?'s':'m'), words:g('wordsbox')||'off' };
   var bar=document.querySelector('.bar'), btn=document.createElement('button'); btn.id='panelsBtn'; btn.type='button';
   bar.insertBefore(btn, bar.firstChild);
   btn.addEventListener('click',function(){ st.panels= st.panels==='folded'?'open':'folded'; s('panels',st.panels); apply(); btn.blur(); });
   var rows=[['panels','Panels (top bar and buttons)',[['open','Full size'],['folded','Folded small']]],
             ['box','Speech box size',[['s','Small'],['m','Medium'],['l','Large']]]];
-  if(true) rows.push(['words','Speech boxes',[['on','Show the words'],['off','Voice only']]]);
+  if(true) rows.push(['words','Speech boxes',[['off','Voice only'],['on','Show the words']]]);
   var done=document.getElementById('setDone').closest('.row');
   rows.forEach(function(row){ var d=document.createElement('div'); d.className='set';
     d.innerHTML='<b>'+row[1]+'</b><div class="seg" data-k2="'+row[0]+'">'+row[2].map(function(o){ return '<button type="button" data-v2="'+o[0]+'">'+o[1]+'</button>'; }).join('')+'</div>';

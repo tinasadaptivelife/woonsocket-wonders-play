@@ -27,6 +27,7 @@ body::before { content:""; position:fixed; inset:0 0 auto; height:env(safe-area-
 .bar h1 { margin:0 auto 0 0; font:700 1.3rem/1.1 var(--title); color:var(--holly); }
 .score { font-weight:700; font-size:1.1rem; font-variant-numeric:tabular-nums; }
 .foot { background:var(--panel); border-top:3px solid var(--line); padding-block:8px calc(8px + env(safe-area-inset-bottom,0px)); padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); display:flex; flex-wrap:wrap; gap:10px; justify-content:center; align-items:center; }
+:root:not([data-pad="on"]) .foot { display:none; }
 .foot button.hop { min-width:120px; min-height:64px; font-size:1.05rem; }
 button { font:700 0.9rem/1.2 var(--read); color:var(--ink); background:var(--well); border:3px solid var(--line); border-radius:12px; min-height:52px; min-width:52px; padding:0 16px; cursor:pointer; touch-action:none; }
 button.primary { background:var(--holly-tint); border-color:var(--holly); }
@@ -104,7 +105,7 @@ canvas { display:block; width:100%; height:100%; touch-action:none; }
           <div class="row"><button class="primary" id="startBtn">Start crossing</button></div>
           <h3 style="margin:0">How to play</h3>
           <ul>
-            <li><b>Hop</b> with the <b>arrow keys</b>, the big <b>Hop</b> buttons, or click or tap next to Razzle.</li>
+            <li><b>Hop</b> with the <b>arrow keys</b>, or <b>tap next to Razzle</b>. The big Hop buttons can be turned on in Settings.</li>
             <li>A log or ice floe carries Razzle along. If it drifts out of the river, hop off first.</li>
             <li>Bring Razzle into each of the <b>3 gaps in the bush</b> to finish a level. There are <b>5 levels</b>.</li>
             <li>Floating raspberries are bonus points. Green rings show where a hop is safe.</li>
@@ -130,10 +131,11 @@ canvas { display:block; width:100%; height:100%; touch-action:none; }
         <div class="set"><b>Text size</b><div class="seg" data-key="size"><button data-v="1">Large</button><button data-v="1.2">Larger</button><button data-v="1.4">Largest</button></div></div>
         <div class="set"><b>Difficulty</b><div class="seg" data-key="diff"><button data-v="easy">Easy</button><button data-v="medium">Medium</button><button data-v="hard">Hard</button></div></div>
         <div class="set"><b>Hop helper (green rings where a hop is safe)</b><div class="seg" data-key="guide"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="set"><b>Hop buttons at the bottom (Left, Hop, Back, Right). You can also tap next to Razzle.</b><div class="seg" data-key="pad"><button data-v="off">Hide</button><button data-v="on">Show</button></div></div>
         <div class="set"><b>Music</b><div class="seg" data-key="music"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
         <div class="set"><b>Sounds</b><div class="seg" data-key="sfx"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
         <div class="set"><b>Razzle's voice</b><div class="seg" data-key="voice"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
-        <div class="set"><b>Sound captions</b><div class="seg" data-key="caps"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="set"><b>Sound captions</b><div class="seg" data-key="caps"><button data-v="off">Off</button><button data-v="on">On</button></div></div>
         <div class="row"><button class="primary" id="setDone">Done</button></div>
       </div></div>
     </div>
@@ -153,7 +155,7 @@ document.getElementById('homeLink').hidden=false;
 var $=function(id){return document.getElementById(id);}, root=document.documentElement;
 function lget(k){try{return localStorage.getItem(k);}catch(e){return null;}}
 function lset(k,v){try{localStorage.setItem(k,v);}catch(e){}}
-var S={ look:lget('rv-look')||'dusk', size:lget('rv-size')||'1', diff:lget('rv-diff')||'easy', lvl:lget('rv-lvl')||'1', guide:lget('rv-guide')||'on', music:lget('rv-music')||'on', sfx:lget('rv-sfx')||'on', voice:lget('rv-voice')||'on', caps:lget('rv-caps')||'on' };
+var S={ look:lget('rv-look')||'dusk', size:lget('rv-size')||'1', diff:lget('rv-diff')||'easy', lvl:lget('rv-lvl')||'1', guide:lget('rv-guide')||'on', music:lget('rv-music')||'on', sfx:lget('rv-sfx')||'on', voice:lget('rv-voice')||'on', caps:lget('rv-caps')||'off', pad:lget('rv-pad')||'off' };
 (function(){ var i=new Image(); i.onload=function(){ $('startArt').hidden=false; }; i.src=$('startArt').src; })();
 
 /* ---------- sound ---------- */
@@ -206,6 +208,7 @@ function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
 function apply(){
   if(S.look==='dusk') root.removeAttribute('data-look'); else root.setAttribute('data-look',S.look);
   root.style.setProperty('--scale',S.size);
+  root.setAttribute('data-pad',S.pad);
   document.querySelectorAll('.seg[data-key]').forEach(function(seg){ seg.querySelectorAll('button').forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.v===S[seg.dataset.key]?'true':'false'); }); });
   music.volume=musicLevel(); if(S.music!=='on') music.pause(); else if(running&&!paused) safePlay(music);
   river.volume= S.sfx==='on'?0.22:0; if(S.voice!=='on' && talkV){ talkV.pause(); talkV=null; } if(S.caps!=='on') $('cap').hidden=true;
@@ -450,13 +453,13 @@ LEVEL=+S.lvl||1; newLevel(false); apply(); resize();
   function g(k){ try{ return localStorage.getItem(P+k); }catch(e){ return null; } }
   function s(k,v){ try{ localStorage.setItem(P+k,v); }catch(e){} }
   var small=(innerWidth<760 || innerHeight<560);
-  var st={ panels:g('panels')||(small?'folded':'open'), box:g('box')||(small?'s':'m'), words:g('wordsbox')||'on' };
+  var st={ panels:g('panels')||(small?'folded':'open'), box:g('box')||(small?'s':'m'), words:g('wordsbox')||'off' };
   var bar=document.querySelector('.bar'), btn=document.createElement('button'); btn.id='panelsBtn'; btn.type='button';
   bar.insertBefore(btn, bar.firstChild);
   btn.addEventListener('click',function(){ st.panels= st.panels==='folded'?'open':'folded'; s('panels',st.panels); apply(); btn.blur(); });
   var rows=[['panels','Panels (top bar and buttons)',[['open','Full size'],['folded','Folded small']]],
             ['box','Speech box size',[['s','Small'],['m','Medium'],['l','Large']]]];
-  if(true) rows.push(['words','Speech boxes',[['on','Show the words'],['off','Voice only']]]);
+  if(true) rows.push(['words','Speech boxes',[['off','Voice only'],['on','Show the words']]]);
   var done=document.getElementById('setDone').closest('.row');
   rows.forEach(function(row){ var d=document.createElement('div'); d.className='set';
     d.innerHTML='<b>'+row[1]+'</b><div class="seg" data-k2="'+row[0]+'">'+row[2].map(function(o){ return '<button type="button" data-v2="'+o[0]+'">'+o[1]+'</button>'; }).join('')+'</div>';
