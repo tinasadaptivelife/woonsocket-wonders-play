@@ -1,0 +1,575 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Backyard Basketball with Uncle Joe</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Playfair+Display:wght@700&display=swap">
+<style>
+/* Layout: one-screen game. Big control bar on top; the snowy Beaumont backyard at dusk below, hoop on the right, Uncle Joe's words in a box. */
+:root {
+  --page:#2b2b2b; --panel:#363636; --well:#242424; --ink:#ece6da; --muted:#cfc6b6; --line:#8a8070;
+  --holly:#a8d8b4; --holly-tint:#2f4a3a; --lamp:#f5cf85; --lamp-tint:#4a3f2b; --joe:#b3c3f0; --scrim:#1a1816; --cap:#f6eedc; --focus:#f5cf85;
+  --read:"Atkinson Hyperlegible","Segoe UI",Verdana,sans-serif; --title:"Playfair Display",Georgia,serif;
+  --scale:1; color-scheme: dark;
+}
+:root[data-look="sand"] { --page:#d6ccb5; --panel:#e4dac4; --well:#cbbfa4; --ink:#111111; --muted:#3a332b; --line:#4a4038; --holly:#1f4a30; --holly-tint:#cfe0cc; --lamp:#6b4510; --lamp-tint:#f3ddae; --joe:#2e3558; --focus:#1f4a30; color-scheme: light; }
+:root[data-look="light"] { --page:#e9e2d2; --panel:#f1ebdd; --well:#ddd4c0; --ink:#111111; --muted:#3a332b; --line:#4a4038; --holly:#1f4a30; --holly-tint:#cfe0cc; --lamp:#6b4510; --lamp-tint:#f3ddae; --joe:#2e3558; --focus:#1f4a30; color-scheme: light; }
+:root[data-look="contrast"] { --page:#c9c9c9; --panel:#d9d9d9; --well:#bdbdbd; --ink:#000; --muted:#1a1a1a; --line:#000; --holly:#0e3320; --holly-tint:#b8d4bc; --lamp:#4a2e00; --lamp-tint:#e9cf92; --joe:#141b3d; --focus:#000; color-scheme: light; }
+html, body { height:100%; }
+html { font-size: calc(20px * var(--scale)); }
+body { margin:0; background:var(--page); color:var(--ink); font:400 1rem/1.5 var(--read); overflow:hidden; }
+body::before { content:""; position:fixed; inset:0 0 auto; height:env(safe-area-inset-top,0px); z-index:10; background:var(--panel); }
+.app { height:100%; display:grid; grid-template-rows:auto 1fr auto; }
+.foot { background:var(--panel); border-top:3px solid var(--line); padding-block:8px calc(8px + env(safe-area-inset-bottom,0px)); padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); display:flex; flex-wrap:wrap; gap:10px; justify-content:center; align-items:center; }
+.foot .shoot { min-width:190px; min-height:64px; font-size:1.05rem; }
+.foot .hint { color:var(--muted); font-weight:700; }
+.bar { background:var(--panel); border-bottom:3px solid var(--line); padding-block:8px; padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center; }
+.home { font-weight:700; font-size:1.05rem; color:var(--ink); background:var(--well); border:3px solid var(--line); border-radius:12px; padding:6px 12px; text-decoration:none; }
+.home:focus-visible { outline:4px solid var(--focus); outline-offset:2px; }
+.bar h1 { margin:0 auto 0 0; font:700 1.3rem/1.1 var(--title); color:var(--holly); }
+.score { font-weight:700; font-size:1.1rem; font-variant-numeric:tabular-nums; }
+button { font:700 0.9rem/1.2 var(--read); color:var(--ink); background:var(--well); border:3px solid var(--line); border-radius:12px; min-height:52px; min-width:52px; padding:0 16px; cursor:pointer; touch-action:none; }
+button.primary { background:var(--holly-tint); border-color:var(--holly); }
+button[aria-pressed="true"] { background:var(--holly-tint); border-color:var(--holly); }
+button[aria-pressed="true"]::before { content:"\2713  "; }
+button:focus-visible { outline:3px solid var(--focus); outline-offset:3px; }
+.stage { position:relative; min-height:0; }
+canvas { display:block; width:100%; height:100%; touch-action:none; }
+.joe { position:absolute; top:14px; left:max(14px,env(safe-area-inset-left,0px)); max-width:min(560px,calc(100% - 28px)); background:var(--panel); border:3px solid var(--line); border-radius:16px; padding:12px 18px; }
+.joe b { display:block; color:var(--joe); font-size:1rem; }
+.joe p { margin:0; font-size:1.15rem; line-height:1.45; }
+.cap { position:absolute; left:50%; bottom:16px; transform:translateX(-50%); max-width:min(900px,calc(100% - 32px)); background:var(--scrim); color:var(--cap); font:700 1.1rem/1.45 var(--read); padding:12px 24px; border-radius:12px; text-align:center; }
+.controls { position:absolute; right:max(14px,env(safe-area-inset-right,0px)); bottom:calc(86px + env(safe-area-inset-bottom,0px)); display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; max-width:calc(100% - 28px); }
+.controls .shoot { min-width:170px; min-height:72px; font-size:1.05rem; }
+.over { position:absolute; inset:0; display:grid; place-items:safe center; padding:24px max(16px,env(safe-area-inset-left,0px)); background:rgba(20,18,16,.55); overflow:auto; }
+.over[hidden] { display:none; }
+.sheet { width:min(820px,100%); background:var(--panel); border:3px solid var(--line); border-radius:18px; overflow:hidden; display:grid; }
+.sheet video.art { width:100%; aspect-ratio:16/8; object-fit:cover; display:block; border-bottom:3px solid var(--line); }
+.sheet video.art[hidden] { display:none; }
+.sheet img.art[hidden] { display:none; }
+.sheet img.art { width:100%; aspect-ratio:16/8; object-fit:cover; display:block; border-bottom:3px solid var(--line); }
+.sheet .in { padding:24px; display:grid; gap:14px; }
+.sheet h2 { margin:0; font:700 2rem/1.1 var(--title); color:var(--holly); text-wrap:balance; }
+.sheet p { margin:0; max-width:62ch; }
+.sheet ul { margin:0; padding-left:1.2em; display:grid; gap:6px; }
+.row { display:flex; flex-wrap:wrap; gap:12px; }
+.set { display:grid; gap:8px; padding:12px; background:var(--well); border-radius:12px; }
+.seg { display:flex; flex-wrap:wrap; gap:8px; }
+.big { font-size:1.6rem; font-weight:700; color:var(--lamp); }
+.note { color:var(--muted); }
+.pip { position:absolute; bottom:84px; left:max(14px,env(safe-area-inset-left,0px)); width:min(230px,34%); margin:0; border:4px solid var(--line); border-radius:16px; overflow:hidden; background:var(--panel); }
+.pip[hidden] { display:none; }
+.pip img { display:block; width:100%; aspect-ratio:1; object-fit:cover; }
+/* SMALL-SCREEN start (tools/small_screen.py) */
+#panelsBtn { white-space:nowrap; }
+:root.compact .bar { padding-block:4px; gap:6px 10px; }
+:root.compact .bar > :not(#panelsBtn):not(#pauseBtn):not(.score) { display:none !important; }
+:root.compact .bar button { min-height:44px; padding:0 12px; font-size:0.8rem; }
+:root.compact .bar .score { font-size:0.85rem; margin-right:auto; }
+:root.compact .foot { padding-block:4px calc(4px + env(safe-area-inset-bottom,0px)); gap:6px; }
+:root.compact .foot button { min-height:44px; min-width:44px; padding:0 10px; font-size:0.8rem; }
+:root.compact .foot .shoot { min-width:120px; min-height:48px; }
+:root.compact .foot .hint { display:none; }
+:root.compact .dad,:root.compact .talk,:root.compact .joe,:root.compact .clara,:root.compact .say { top:auto !important; bottom:8px; left:8px; right:8px; max-width:none; padding:6px 12px; border-radius:12px; gap:8px; }
+:root.compact .dad img,:root.compact .talk img,:root.compact .joe img,:root.compact .clara img,:root.compact .say img { display:none; }
+:root.compact .dad small,:root.compact .talk small,:root.compact .joe small,:root.compact .clara small,:root.compact .say small { display:none; }
+:root.compact .cap { bottom:auto; top:8px; }
+:root[data-box="s"] .dad p,:root[data-box="s"] .talk p,:root[data-box="s"] .joe p,:root[data-box="s"] .clara p,:root[data-box="s"] .say p, :root[data-box="s"] .cap { font-size:0.85rem; line-height:1.35; }
+:root[data-box="s"] .dad b,:root[data-box="s"] .talk b,:root[data-box="s"] .joe b,:root[data-box="s"] .clara b,:root[data-box="s"] .say b { font-size:0.8rem; }
+:root[data-box="l"] .dad p,:root[data-box="l"] .talk p,:root[data-box="l"] .joe p,:root[data-box="l"] .clara p,:root[data-box="l"] .say p, :root[data-box="l"] .cap { font-size:1.3rem; }
+:root.nobox .dad,:root.nobox .talk,:root.nobox .joe,:root.nobox .clara,:root.nobox .say { display:none !important; }
+/* SMALL-SCREEN end */
+.joe { display:flex; gap:14px; align-items:center; }
+.joe[hidden] { display:none; }
+.spk { width:72px; height:72px; border-radius:12px; border:3px solid var(--line); object-fit:cover; flex:none; }
+.spk[hidden] { display:none; }
+</style>
+
+<div class="app">
+  <header class="bar">
+    <a class="home" id="homeLink" href="../" hidden>&larr; All games</a>
+    <h1>Backyard Basketball</h1>
+    <span class="score" id="scoreText" aria-live="polite">Clara 0 · Uncle Joe 0</span>
+    <button id="pauseBtn" aria-pressed="false">Pause</button>
+    <button id="setBtn">Settings</button>
+  </header>
+  <div class="stage" id="stage">
+    <canvas id="cv" aria-label="The snowy Beaumont backyard at dusk. Clara aims a basketball at the hoop while Uncle Joe and Bernie watch"></canvas>
+    <div class="joe" id="joeBox" hidden><img class="spk" id="joePic" src="art/joe-face.jpg" alt=""><div><b id="joeWho">Uncle Joe</b><p id="joeLine"></p></div></div>
+    <figure class="pip" id="berniePic" hidden><img src="art/bernie-snow.jpg" alt="Bernie sitting in the snow, smiling, his tail sweeping a fan shape in the snow"></figure>
+    <p class="cap" id="cap" hidden></p>
+
+    <div class="over" id="startOver">
+      <div class="sheet">
+        <img class="art" id="startArt" alt="" hidden>
+        <div class="in">
+          <h2>Backyard Basketball with Uncle Joe</h2>
+          <p>It is nine o'clock on a snowy night. Uncle Joe says yes to one more game, the porch light is on, and Bernie is ready to supervise.</p>
+          <div class="row"><button class="primary" id="startBtn">Play with Uncle Joe</button></div>
+          <h3 style="margin:0">How to play</h3>
+          <ul>
+            <li><b>Left and right arrows</b> aim the shot higher or lower.</li>
+            <li><b>Hold the space bar</b> (or the Hold to shoot button) to build power, then <b>let go</b> to shoot.</li>
+            <li>You and Uncle Joe take turns. First to <b>7 baskets</b>.</li>
+            <li>Any shot that comes close still counts. Bernie may steal the ball now and then.</li>
+          </ul>
+          <p class="note">Uncle Joe's lines are written for the game, not from the show. His voice is AI-generated.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="over" id="endOver" hidden>
+      <div class="sheet"><img class="art" id="endPic" src="art/bernie-snow.jpg" alt="Bernie sitting in the snowy backyard at dusk, smiling, by the porch light"><video class="art" id="endVid" src="art/joe-cheer.mp4" poster="art/joe-cheer.jpg" muted loop playsinline preload="auto" hidden aria-label="Uncle Joe cheers in the snowy backyard while Clara holds the basketball and Bernie bounces beside her"></video><div class="in">
+        <h2 id="endTitle">Good game!</h2>
+        <p class="big" id="endScore"></p>
+        <p id="endNote"></p>
+        <div class="row"><button class="primary" id="againBtn">Play again</button></div>
+      </div></div>
+    </div>
+
+    <div class="over" id="setOver" hidden>
+      <div class="sheet"><div class="in">
+        <h2>Settings</h2>
+        <div class="set"><b>Look</b><div class="seg" data-key="look"><button data-v="dusk">Dark soft</button><button data-v="sand">Dim sand</button><button data-v="light">Light</button><button data-v="contrast">Extra contrast</button></div></div>
+        <div class="set"><b>Text size</b><div class="seg" data-key="size"><button data-v="1">Large</button><button data-v="1.2">Larger</button><button data-v="1.4">Largest</button></div></div>
+        <div class="set"><b>Shot helper (shows where the ball will go)</b><div class="seg" data-key="guide"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="set"><b>How close counts</b><div class="seg" data-key="kind"><button data-v="kind">Very kind</button><button data-v="fair">Fair</button></div></div>
+        <div class="set"><b>Music</b><div class="seg" data-key="music"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="set"><b>Sounds</b><div class="seg" data-key="sfx"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="set"><b>Uncle Joe's voice</b><div class="seg" data-key="voice"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="set"><b>Sound captions</b><div class="seg" data-key="caps"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="set"><b>Calm motion (no falling snow)</b><div class="seg" data-key="calm"><button data-v="off">Off</button><button data-v="on">On</button></div></div>
+        <div class="row"><button class="primary" id="setDone">Done</button></div>
+      </div></div>
+    </div>
+  </div>
+  <footer class="foot">
+    <button id="aimL">Aim lower</button>
+    <button class="shoot primary" id="shootBtn">Hold to shoot</button>
+    <button id="aimR">Aim higher</button>
+    <span class="hint" id="turnHint" aria-live="polite">Your turn</span>
+  </footer>
+</div>
+
+<script>
+(function(){
+'use strict';
+document.getElementById('homeLink').hidden=false;
+var $=function(id){return document.getElementById(id);}, root=document.documentElement;
+function lget(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+function lset(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+var S={ look:lget('bb-look')||'dusk', size:lget('bb-size')||'1', guide:lget('bb-guide')||'on', kind:lget('bb-kind')||'kind', music:lget('bb-music')||'on', sfx:lget('bb-sfx')||'on', caps:lget('bb-caps')||'on', voice:lget('bb-voice')||'on', calm:lget('bb-calm')||(reduce?'on':'off') };
+
+/* ---------- sound ---------- */
+function snd(src,loop,vol){ var a=new Audio(src); a.loop=!!loop; a.volume=vol; a.preload='auto'; return a; }
+var music=snd('audio/music-basketball-easy.mp3',true,0.22);   /* Tina's songs (2026-11-18): Easy when "Very kind", Med-high Basketball when "Fair" */
+var KIND_MUSIC={kind:'audio/music-basketball-easy.mp3', fair:'audio/music-basketball-fair.mp3'};
+var SFX={ swish:'audio/sfx/swish.mp3', rim:'audio/sfx/rim.mp3', board:'audio/sfx/backboard.mp3', bounce:'audio/sfx/bounce.mp3', woof:'audio/sfx/bernie-woof.mp3', chime:'audio/sfx/finish-chime.mp3', door:'audio/sfx/screen-door.mp3', thump:'audio/sfx/bernie-tail-thump.mp3' };
+function play(n,v){ if(S.sfx!=='on') return; var a=new Audio(SFX[n]); a.volume=v==null?0.8:v; var p=a.play(); if(p&&p.catch) p.catch(function(){}); }
+function safePlay(a){ var p=a.play(); if(p&&p.catch) p.catch(function(){}); }
+function setTrack(src){ if(music.getAttribute('src')===src) return; var was=!music.paused; music.src=src; music.load(); if(was) safePlay(music); }
+var capT=null; function caption(t,ms){ if(S.caps!=='on') return; var c=$('cap'); c.textContent=t; c.hidden=false; clearTimeout(capT); capT=setTimeout(function(){c.hidden=true;},ms||2200); }
+/* Uncle Joe speaks: the words show in his box, and his voice plays (audio/voice/joe-<kind>-<n>.mp3, ElevenLabs voice ewxUvnyvvOehYjKjUVKC). */
+var joeT=null, joeV=null, JQ=[], joeBusyTill=0, lastPick={};
+function musicLevel(){ return S.music!=='on' ? 0 : (joeV && !joeV.paused ? 0.1 : 0.22); }
+/* Reading time: slow and steady, about 2 words a second plus a pause, so Tina can finish each line. */
+function readMs(t){ return 1800 + t.split(/\s+/).length*480; }
+/* Is Uncle Joe still talking (voice playing, or his words still on screen)? */
+function joeBusy(){ return (joeV && !joeV.ended && !joeV.paused) || Date.now()<joeBusyTill; }
+/* New lines never cut him off. A line that comes while he talks waits its turn (only the newest one waits; "aim" tips are skipped). */
+function joeSays(kind,ms,who){
+  who=who||'joe';
+  if(joeBusy()||JQ.length){ if(kind!=='aim' && JQ.length<3) JQ.push({kind:kind,ms:ms,who:who}); return; }
+  joeSpeak(kind,ms,who);
+}
+/* Clara answers too, in her podcast voice (Chatterbox, audio/voice/clara-<kind>-<n>.mp3) */
+function claraSays(kind){ joeSays(kind,0,'clara'); }
+function joeSpeak(kind,ms,who){
+  who=who||'joe';
+  var list=(who==='clara'?CLARA:JOE)[kind], i=Math.floor(Math.random()*list.length), key=who+kind;
+  if(list.length>1 && i===lastPick[key]) i=(i+1)%list.length; lastPick[key]=i; var t=list[i];
+  $('joeWho').textContent= who==='clara'?'Clara':'Uncle Joe'; $('joeWho').style.color= who==='clara'?'#9fc0f0':'';
+  if(who==='joe' && kind==='joeMade' && /Textbook/.test(t) && JQ.length<2){ JQ.push({kind:'classLink',ms:0,who:'joe'}); JQ.push({kind:'school',ms:5200,who:'joe'}); }   // Tina: textbook leads into a class lesson
+  var jp=$('joePic'); jp.src= who==='clara'?'art/clara-face.jpg':'art/joe-face.jpg'; jp.alt= who==='clara'?'Clara, chestnut braids and rosy cheeks, from Tina’s Storykeeper film':'Uncle Joe smiling in his red pom-pom hat';
+  $('joeLine').textContent=t; $('joeBox').hidden=false; clearTimeout(joeT);
+  if(joeV){ joeV.pause(); joeV=null; }
+  ms=Math.max(ms||0, readMs(t));
+  joeBusyTill=Date.now()+ms;
+  if(S.voice==='on'){
+    var v=new Audio('audio/voice/'+who+'-'+kind+'-'+(i+1)+'.mp3'); v.volume=1; joeV=v;
+    v.addEventListener('loadedmetadata',function(){ if(v===joeV && isFinite(v.duration)){ var full=Math.max(ms, v.duration*1000+1500); joeBusyTill=Date.now()+full; clearTimeout(joeT); joeT=setTimeout(hideJoe, full); } });
+    v.addEventListener('ended',function(){ if(v===joeV){ music.volume=musicLevel(); } });
+    var p=v.play(); if(p&&p.catch) p.catch(function(){});
+    music.volume=musicLevel();
+  }
+  joeT=setTimeout(hideJoe, ms);
+}
+/* Tina's painting of Bernie in the snow pops up when his tail thumps */
+var bpT=null; function showBernie(){ var f=$('berniePic'); f.hidden=false; clearTimeout(bpT); bpT=setTimeout(function(){ f.hidden=true; },3200); }
+function hideJoe(){
+  if(paused){ clearTimeout(joeT); joeT=setTimeout(hideJoe,500); return; }
+  if(joeV && !joeV.ended && !joeV.paused){ clearTimeout(joeT); joeT=setTimeout(hideJoe,400); return; }
+  $('joeBox').hidden=true; joeBusyTill=0;
+  if(JQ.length && running){ joeBusyTill=Date.now()+700; setTimeout(function(){ if(running && JQ.length){ var q=JQ.shift(); joeSpeak(q.kind,q.ms,q.who); } },500); }
+}
+
+function apply(){
+  if(S.look==='dusk') root.removeAttribute('data-look'); else root.setAttribute('data-look',S.look);
+  root.style.setProperty('--scale',S.size);
+  document.querySelectorAll('.seg[data-key]').forEach(function(seg){ seg.querySelectorAll('button').forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.v===S[seg.dataset.key]?'true':'false'); }); });
+  music.volume = musicLevel(); if(S.voice!=='on' && joeV){ joeV.pause(); joeV=null; } if(S.music!=='on') music.pause(); else if(running) safePlay(music);
+  if(S.caps!=='on') $('cap').hidden=true;
+  resize();
+}
+document.querySelectorAll('.seg[data-key]').forEach(function(seg){ seg.addEventListener('click',function(e){ var b=e.target.closest('button'); if(!b) return; S[seg.dataset.key]=b.dataset.v; lset('bb-'+seg.dataset.key,b.dataset.v); apply(); }); });
+
+/* ---------- optional painted art from Google Flow ---------- */
+var IMG={};
+['backyard-hoop','clara-stand','clara-shoot','joe-shoot','bernie-jump'].forEach(function(n){ var i=new Image(); i.onload=function(){ IMG[n]=i; }; i.src='art/'+n+'.png'; });
+(function(){ var i=new Image(); i.onload=function(){ $('startArt').src=i.src; $('startArt').hidden=false; $('startArt').alt='The snowy backyard at dusk: the porch light is on, the hoop stands in the snow, and Bernie\u2019s dog house sits by the rabbit hutch'; }; i.src='art/backyard-start.jpg'; })();
+
+/* ---------- world (in metres, drawn to the canvas) ---------- */
+var cv=$('cv'), ctx=cv.getContext('2d'), W=900, H=600, DPR=1, M=60, GROUND=0;
+function resize(){ var r=$('stage').getBoundingClientRect(); DPR=Math.min(devicePixelRatio||1,2); W=Math.max(320,r.width); H=Math.max(300,r.height); cv.width=W*DPR; cv.height=H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0); M=Math.min(W/9.5, H/5.6); GROUND=H-Math.max(70, H*0.13); alignYard(); if(G) draw(); }
+addEventListener('resize',resize);
+function X(m){ return W*0.06 + m*M; } function Y(m){ return GROUND - m*M; }
+var HOOP={ x:7.6, y:3.05, r:0.23 }, BOARD={ x:7.98, y0:2.9, y1:3.95 }, GRAV=9.8;
+/* Tina's backyard painting behind the game (2026-11-18). The game's hoop moves to sit on the painted hoop
+   (rim centre at 60.5% across, 28.9% down the picture). If the window shape puts it somewhere unplayable, the code yard is used. */
+var YARD=new Image(), YARDok=false, YARDfit=null; YARD.onload=function(){ YARDok=true; alignYard(); if(G) draw(); }; YARD.src='art/backyard-start.jpg';
+function alignYard(){ YARDfit=null; HOOP.x=7.6; HOOP.y=3.05; BOARD.x=7.98; BOARD.y0=2.9; BOARD.y1=3.95; if(typeof JOE_SPOT!=='undefined') placeSpots(); if(!YARDok) return;
+  var sc=Math.max(W/YARD.width,H/YARD.height), iw=YARD.width*sc, ih=YARD.height*sc, ox=(W-iw)/2, oy=H-ih, rx=ox+0.605*iw, ry=oy+0.289*ih;
+  var hx=(rx-W*0.06)/M, hy=(GROUND-ry)/M; if(hx<5.0||hx>9.5||hy<2.4||hy>4.8) return;
+  YARDfit={ox:ox,oy:oy,iw:iw,ih:ih}; HOOP.x=hx; HOOP.y=hy; BOARD.x=hx+0.42; BOARD.y0=hy-0.15; BOARD.y1=hy+0.95; placeSpots(); }
+/* shooting spots and Uncle Joe's place are measured back from the hoop, so they fit wherever the hoop is */
+function placeSpots(){ SPOTS=[4.4,3.7,3.0,5.0].map(function(d){ return Math.max(0.7,HOOP.x-d); }); JOE_SPOT=Math.max(1.4,HOOP.x-3.3); JOE_WAIT=Math.max(0.4,Math.min(1.7,SPOTS[2]-1.2)); CLARA_WAIT=Math.max(0.3,JOE_WAIT-0.3); if(G && G.phase==='aim'){ G.spot=SPOTS[G.shots%SPOTS.length]; } }
+var SPOTS=[3.2, 3.9, 4.6, 2.6];
+
+var G=null, running=false, paused=false, last=0, flakes=[], hold=false, keys={}, winCount=0;
+function newGame(){
+  G={ clara:0, joe:0, turn:'clara', spot:SPOTS[0], angle:58, power:0, pdir:1, ball:null, phase:'aim', wait:0, shots:0, bernie:{x:0.9, mode:'sit', t:0}, joeX:1.7, claraX:SPOTS[0], t:0, last:'' };
+  updateScore();
+}
+function updateScore(){ $('scoreText').textContent='Clara '+G.clara+' · Uncle Joe '+G.joe; }
+
+/* ---------- Uncle Joe's lines (written for the game) ---------- */
+var JOE={
+  start:["Nine o'clock basketball. Don't tell your dad. Okay, he already knows.","First to seven. Loser shovels the walk. Kidding. Mostly."],
+  aim:["Bend your knees, kid. The power comes from your legs.","Elbow in. Eyes on the front of the rim.","Take your time. The hoop isn't going anywhere.","Picture it going in first. Then shoot.","Follow through, like you're reaching into a cookie jar on a high shelf."],
+  made:["Nothing but net! Kid's got range.","Okay, okay, that one was not luck.","Look at that. I taught you that. I'm taking credit.","Buckets! Clara Beaumont, ladies and gentlemen.","You're on fire. In the snow. That's science.","How did you do that? Teach me."],
+  close:["That counts. Backyard rules. I make the rules.","Close enough! The rim said yes."],
+  miss:["Unlucky. Shake it off.","So close. A little more push next time.","The wind took that one. Definitely the wind.","Next one's going in. I can feel it.","Even the pros miss. A lot.","Shake it off, kid. Breathe, then shoot."],
+  joeMade:["And the crowd goes wild. Bernie, cheer.","Still got it. College hasn't ruined me yet.","Swish. Don't look so surprised.","Did you see that form? Textbook."],
+  poncho:["You don't have your poncho on today."],
+  classLink:["That reminds me what I learned in class this week."],
+  joeMiss:["I meant to do that.","Don't say anything. Not one word.","The rim moved. I saw it.","Okay, that was ugly. Don't tell Bernie."],
+  school:["Physics this week: every shot is a curve called a parabola. Up, over, down. That's your shot, kid.", "We learned that a ball thrown at about forty-five degrees goes the farthest. Don't tell the hoop.", "Chemistry lab: snowflakes almost always have six sides. Check your mitten.", "Biology: a dog's nose is thousands of times better than ours. Bernie's basically a scientist.", "History class: the Blackstone River ran some of the first mills in the whole country. Right here, kid.", "Astronomy: sunlight takes about eight minutes to reach us. So we always see the sun a little late.", "Math this week: make three out of five, and that's sixty percent. You're doing better than that tonight.", "Psychology class says if you picture something before you do it, you get better at it. So picture the swish."],
+  sideways:["So... school okay this week? You've been kind of quiet.","I've got a test on Thursday. Physics. Explain arcs to me while you shoot.","Your dad hummed that same song all through dinner again.","Mr. Pelletier at the store asked about you today. Said you ask good questions."]
+};
+/* Clara's lines (new ones made for the game in her podcast voice) */
+var CLARA={"made": ["Yes! Did you see that?", "Nothing but net!", "That's how it's done, Uncle Joe.", "Swish! Did you see that, Bernie?"], "miss": ["Aw, so close!", "The wind took it. Definitely the wind.", "The hoop moved. I swear."], "school": ["That's actually kind of cool.", "You learned that this week?", "Okay, now I want to try it."], "start": ["I feel like I'm going to win today.", "Ready when you are, Uncle Joe."], "joeMade": ["Okay, that was a good one."], "ahead": ["My fingers are frozen, but I'm still winning."], "win": ["I win! Rematch tomorrow?"], "poncho": ["My poncho got in my eyes."]};
+function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
+
+/* ---------- input ---------- */
+addEventListener('keydown',function(e){
+  if(!running) return;
+  if([' ','ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].indexOf(e.key)>-1) e.preventDefault();
+  if(e.key==='p'||e.key==='P'||e.key==='Escape'){ togglePause(); return; }
+  keys[e.key]=true;
+  if(e.key===' ' && !e.repeat) startHold();
+});
+addEventListener('keyup',function(e){ keys[e.key]=false; if(e.key===' ') release(); });
+var sb=$('shootBtn');
+sb.addEventListener('pointerdown',function(e){ e.preventDefault(); startHold(); });
+['pointerup','pointercancel','pointerleave'].forEach(function(ev){ sb.addEventListener(ev,function(){ release(); }); });
+function nudge(id,d){ var b=$(id), t=null; b.addEventListener('pointerdown',function(e){ e.preventDefault(); aim(d); t=setInterval(function(){aim(d);},120); }); ['pointerup','pointerleave','pointercancel'].forEach(function(ev){ b.addEventListener(ev,function(){ clearInterval(t); }); }); }
+nudge('aimL',-1); nudge('aimR',1);
+function aim(d){ if(G && G.phase==='aim' && G.turn==='clara') G.angle=Math.max(35,Math.min(75,G.angle+d*1.5)); }
+cv.addEventListener('pointerdown',function(e){ startHold(); cv.setPointerCapture(e.pointerId); });
+cv.addEventListener('pointerup',function(){ release(); });
+function startHold(){ if(!running||paused||!G||G.phase!=='aim'||G.turn!=='clara'||Math.abs(G.claraX-G.spot)>0.15) return; hold=true; G.power=0; G.pdir=1; }
+function release(){ if(!hold) return; hold=false; if(G.phase==='aim'&&G.turn==='clara') shoot('clara', G.angle, powerToSpeed(G.power)); }
+
+/* ---------- shooting ---------- */
+var JOE_SPOT=4.3, JOE_WAIT=1.7, CLARA_WAIT=1.5;
+function launchFrom(who){ return who==='clara' ? {x:G.spot+CLARA_HAND, y:1.5} : {x:JOE_SPOT+0.2, y:2.05}; }
+var CLARA_HAND=0.2;   // becomes 0.5 once Tina's painted Clara (hands up, ball out front) has loaded
+function idealSpeed(x0,y0,angDeg){ var a=angDeg*Math.PI/180, dx=HOOP.x-x0, dy=HOOP.y-y0; var den=2*Math.cos(a)*Math.cos(a)*(dx*Math.tan(a)-dy); return den>0 ? Math.sqrt(GRAV*dx*dx/den) : 9; }
+function powerToSpeed(p){ var o=launchFrom('clara'), v=idealSpeed(o.x,o.y,G.angle); return v*(0.72+0.56*p); } // the sweet spot is near the middle of the meter
+function shoot(who,ang,speed){
+  var o=launchFrom(who), a=ang*Math.PI/180;
+  G.ball={ x:o.x, y:o.y, vx:Math.cos(a)*speed, vy:Math.sin(a)*speed, who:who, scored:false, near:99, boardHit:false, rimHit:false, done:false, t:0 };
+  G.phase='flight';
+}
+function joeTurn(){
+  G.turn='joe'; G.phase='joeWait'; G.wait=1.4;
+  // on his turn, Uncle Joe sometimes chats, or tells Clara what he learned in class this week (and she answers)
+  var rr=Math.random(); if(joeBusy()) rr=1; if(rr<0.15) joeSays('sideways',4600); else if(rr<0.4){ joeSays('school',5200); if(Math.random()<0.6) claraSays('school'); }
+}
+
+/* ---------- update ---------- */
+function update(dt){
+  G.t+=dt;
+  // people walk to their places: the shooter steps up, the other waits behind
+  var jt = G.turn==='joe' ? JOE_SPOT : Math.max(0.35, Math.min(JOE_WAIT, G.spot-1.1)) /* waits a step behind Clara, never on top of her */, ct = G.turn==='clara' ? G.spot : CLARA_WAIT;
+  G.joeX += (jt-G.joeX)*Math.min(1,dt*3); G.claraX += (ct-G.claraX)*Math.min(1,dt*3);
+  $('turnHint').textContent = G.turn==='clara' ? 'Your turn' : "Uncle Joe's turn";
+  if(G.phase==='aim' && G.turn==='clara'){
+    if(keys.ArrowLeft) G.angle=Math.max(35,G.angle-dt*28);
+    if(keys.ArrowRight) G.angle=Math.min(75,G.angle+dt*28);
+    if(hold){ var spd=S.kind==='kind'?0.55:0.8; G.power+=G.pdir*dt*spd; if(G.power>1){G.power=1;G.pdir=-1;} if(G.power<0){G.power=0;G.pdir=1;} }
+  }
+  if(G.phase==='joeWait'){ G.wait-=dt; if(G.wait<=0){ var o=launchFrom('joe'), ang=52+Math.random()*6, v=idealSpeed(o.x,o.y,ang)*(Math.random()<0.55?1+(Math.random()*0.03-0.015):1+(Math.random()<.5?-1:1)*(0.07+Math.random()*0.06)); shoot('joe',ang,v); } }
+  if(G.phase==='flight') flight(dt);
+  if(G.phase==='after'){ G.wait-=dt; if(G.wait<=0) next(); }   // faster turns (Tina, 2026-11-18)
+  // Bernie
+  var b=G.bernie; b.t+=dt;
+  if(b.mode==='fetch'){ b.x+= (b.tx-b.x)*Math.min(1,dt*2.2); if(Math.abs(b.tx-b.x)<0.1){ b.mode='return'; b.tx=0.9; } }
+  else if(b.mode==='return'){ b.x+=(b.tx-b.x)*Math.min(1,dt*1.6); if(Math.abs(b.tx-b.x)<0.1) b.mode='sit'; }
+}
+function flight(dt){
+  var bl=G.ball, steps=4, h=dt/steps;
+  for(var i=0;i<steps;i++){
+    bl.t+=h; bl.vy-=GRAV*h; bl.x+=bl.vx*h; bl.y+=bl.vy*h;
+    // backboard
+    if(!bl.boardHit && bl.x+0.12>=BOARD.x && bl.y>BOARD.y0 && bl.y<BOARD.y1 && bl.vx>0){ bl.vx=-bl.vx*0.5; bl.x=BOARD.x-0.12; bl.boardHit=true; play('board',0.6); }
+    // through the hoop: crossing the rim height going down
+    if(!bl.scored && bl.vy<0 && bl.y<=HOOP.y && bl.y-bl.vy*h>HOOP.y){
+      var dx=Math.abs(bl.x-HOOP.x); bl.near=Math.min(bl.near,dx);
+      var tol = bl.who==='clara' ? (S.kind==='kind'?HOOP.r+0.32:HOOP.r+0.12) : HOOP.r;
+      if(dx<HOOP.r-0.04){ bl.scored='clean'; }
+      else if(dx<tol){ bl.scored='close'; }
+      else if(dx<HOOP.r+0.15){ bl.rimHit=true; play('rim',0.6); bl.vx*=-0.4; bl.vy=Math.abs(bl.vy)*0.35; }
+      if(bl.scored){ play('swish',0.8); bl.vx*=0.2; }
+    }
+    if(bl.y<0.12){ bl.y=0.12; if(Math.abs(bl.vy)>1.2){ bl.vy=-bl.vy*0.4; bl.vx*=0.6; play('bounce',0.5); } else { bl.vy=0; bl.vx*=0.9; } }
+    if(bl.x<-1||bl.x>11){ bl.vx=0; }
+  }
+  var settled = bl.y<=0.13 && Math.abs(bl.vy)<0.2;
+  if(bl.scored || settled || bl.t>4){ if(!bl.done){ bl.done=true; resolve(); } }
+}
+function resolve(){
+  var bl=G.ball, who=bl.who;
+  if(bl.scored){
+    if(who==='clara'){ G.clara++; caption(bl.scored==='clean'?'[Swish] Basket for Clara!':'[The ball rolls in] Close enough, it counts!',2400); if(G.clara-G.joe>=2 && Math.random()<0.3) claraSays('ahead'); else if(Math.random()<0.45) claraSays('made'); joeSays(bl.scored==='clean'?'made':'close'); if(Math.random()<.5){ setTimeout(function(){ play('thump',0.7); caption("[Bernie's tail thumps in the snow]",2600); showBernie(); },900); } }
+    else { G.joe++; caption('[Swish] Basket for Uncle Joe.',2200); joeSays('joeMade'); if(Math.random()<0.35) claraSays('joeMade'); if(Math.random()<.5){ play('woof',0.5); } }
+    updateScore();
+  } else {
+    if(who==='clara'){ caption('[The ball drops in the snow] Missed.',2000); if(!G.ponchoDone && Math.random()<0.25){ G.ponchoDone=true; claraSays('poncho'); joeSays('poncho'); } else { if(Math.random()<0.4) claraSays('miss'); joeSays('miss'); } }
+    else { caption('[Clank] Uncle Joe missed.',2000); joeSays('joeMiss'); }
+    if(Math.random()<0.3){ G.bernie.mode='fetch'; G.bernie.tx=Math.max(0.5,Math.min(8,bl.x)); play('woof',0.6); caption('[Bernie dashes off with the ball, then brings it back]',2800); }
+  }
+  G.phase='after'; G.wait = G.bernie.mode==='fetch'?2.4:1.1;
+}
+function next(){
+  if(G.clara>=7||G.joe>=7){ end(); return; }
+  G.ball=null;
+  if(G.turn==='clara'){ joeTurn(); }
+  else { G.turn='clara'; G.phase='aim'; G.power=0; G.shots++; G.spot=SPOTS[G.shots%SPOTS.length]; if(Math.random()<0.3 && !joeBusy()) joeSays('aim'); }
+}
+function end(){
+  running=false; music.volume=S.music==='on'?0.12:0;
+  play('chime',0.8);
+  var won=G.clara>=7;
+  if(won && S.voice==='on') setTimeout(function(){ JQ=[]; joeSpeak('win',0,'clara'); },600);
+  $('endTitle').textContent= won ? 'Clara wins!' : 'Uncle Joe wins this one';
+  $('endScore').textContent='Clara '+G.clara+', Uncle Joe '+G.joe;
+  $('endNote').textContent= won ? 'Uncle Joe throws up his hands: "Rematch tomorrow. Nine o’clock."' : 'Uncle Joe grins: "Rematch? You were this close." Bernie agrees.';
+  // when Clara wins: Tina's video of Uncle Joe cheering (silent); otherwise Bernie in the snow. Calm motion shows a still.
+  var v=$('endVid'); v.pause();
+  // Clara wins: wins take turns between Uncle Joe cheering (video) and Tina's picture of Clara and Bernie celebrating (2026-11-18)
+  winCount=(winCount||0)+(won?1:0); var pic=$('endPic');
+  if(won && winCount%2===0){ v.hidden=true; pic.src='art/clara-cheer.jpg'; pic.alt='Clara jumps for joy under the hoop as the ball drops through, Bernie bounding beside her in the snow'; pic.hidden=false; }
+  else if(won){ v.hidden=false; pic.hidden=true; if(S.calm!=='on'){ var pv=v.play(); if(pv&&pv.catch) pv.catch(function(){}); } }
+  else { v.hidden=true; pic.src='art/bernie-snow.jpg'; pic.alt='Bernie sitting in the snowy backyard at dusk, smiling, by the porch light'; pic.hidden=false; }
+  $('endOver').hidden=false; $('againBtn').focus();
+}
+
+/* ---------- drawing ---------- */
+function rr(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function drawYard(){
+  if(YARDfit){ var f=YARDfit; ctx.drawImage(YARD,f.ox,f.oy,f.iw,f.ih); ctx.fillStyle='rgba(30,26,46,.12)'; ctx.fillRect(0,0,W,H);
+    var sg=ctx.createLinearGradient(0,GROUND-24,0,GROUND+8); sg.addColorStop(0,'rgba(215,210,228,0)'); sg.addColorStop(1,'rgba(215,210,228,.9)'); ctx.fillStyle=sg; ctx.fillRect(0,GROUND-24,W,32); ctx.fillStyle='rgba(215,210,228,.9)'; ctx.fillRect(0,GROUND+8,W,H); return; }
+  if(IMG['backyard-hoop']){ var im=IMG['backyard-hoop'], sc=Math.max(W/im.width,H/im.height); ctx.drawImage(im,(W-im.width*sc)/2,(H-im.height*sc)/2,im.width*sc,im.height*sc); ctx.fillStyle='rgba(30,26,40,.25)'; ctx.fillRect(0,0,W,H); return; }
+  var sky=ctx.createLinearGradient(0,0,0,GROUND); sky.addColorStop(0,'#5a4f86'); sky.addColorStop(0.45,'#a996d0'); sky.addColorStop(0.8,'#e79aae'); sky.addColorStop(1,'#f2a65a'); ctx.fillStyle=sky; ctx.fillRect(0,0,W,GROUND);
+  // far mills and trees
+  ctx.fillStyle='#6b4a5a'; [[0.55,0.22,0.16],[0.73,0.28,0.12],[0.86,0.2,0.1]].forEach(function(m){ ctx.fillRect(W*m[0],GROUND-H*m[1],W*m[2],H*m[1]); });
+  ctx.fillRect(W*0.62,GROUND-H*0.36,W*0.012,H*0.14);
+  ctx.fillStyle='rgba(247,207,122,.75)'; for(var i=0;i<14;i++){ ctx.fillRect(W*(0.565+(i%7)*0.02),GROUND-H*(0.18-Math.floor(i/7)*0.06),W*0.008,H*0.02); }
+  // the house on the left: tall and narrow, porch light
+  var hx=-W*0.02, hw=W*0.16, hy=GROUND-H*0.62;
+  ctx.fillStyle='#5c3a2c'; ctx.fillRect(hx,hy,hw,GROUND-hy);
+  ctx.fillStyle='#3b2a24'; ctx.beginPath(); ctx.moveTo(hx-10,hy); ctx.lineTo(hx+hw/2,hy-H*0.12); ctx.lineTo(hx+hw+10,hy); ctx.closePath(); ctx.fill();
+  ctx.fillStyle='#eef0f5'; ctx.beginPath(); ctx.moveTo(hx-10,hy); ctx.lineTo(hx+hw/2,hy-H*0.12); ctx.lineTo(hx+hw/2,hy-H*0.105); ctx.lineTo(hx,hy+4); ctx.fill();
+  ctx.fillStyle='#f7cf7a'; [[0.25,0.15],[0.25,0.38]].forEach(function(w){ ctx.fillRect(hx+hw*w[0],hy+H*w[1]*0.62,hw*0.5,H*0.08); });
+  var pl=ctx.createRadialGradient(hx+hw+8,GROUND-H*0.3,4,hx+hw+8,GROUND-H*0.3,H*0.4); pl.addColorStop(0,'rgba(247,207,122,.55)'); pl.addColorStop(1,'rgba(247,207,122,0)'); ctx.fillStyle=pl; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#ffe6a8'; ctx.beginPath(); ctx.arc(hx+hw+8,GROUND-H*0.3,6,0,Math.PI*2); ctx.fill();
+  // rabbit hutch and chicken coop
+  ctx.fillStyle='#6a4a30'; ctx.fillRect(W*0.2,GROUND-H*0.09,W*0.08,H*0.07); ctx.fillStyle='#eef0f5'; ctx.fillRect(W*0.195,GROUND-H*0.1,W*0.09,H*0.015);
+  ctx.fillStyle='#7a3b2e'; ctx.fillRect(W*0.3,GROUND-H*0.12,W*0.07,H*0.1); ctx.fillStyle='#eef0f5'; ctx.beginPath(); ctx.moveTo(W*0.295,GROUND-H*0.12); ctx.lineTo(W*0.335,GROUND-H*0.16); ctx.lineTo(W*0.375,GROUND-H*0.12); ctx.fill();
+  // snowy ground
+  var gr=ctx.createLinearGradient(0,GROUND,0,H); gr.addColorStop(0,'#cfc8dc'); gr.addColorStop(1,'#b9b1c9'); ctx.fillStyle=gr; ctx.fillRect(0,GROUND,W,H-GROUND);
+  ctx.fillStyle='#d9d3e3'; ctx.beginPath(); ctx.ellipse(X(5.3),GROUND+H*0.03,M*3.4,H*0.025,0,0,Math.PI*2); ctx.fill();
+}
+function drawHoop(){
+  if(YARDfit) return;   // the painted hoop is the hoop
+  ctx.fillStyle='#4a3a30'; ctx.fillRect(X(8.25),Y(3.9),M*0.14,Y(0)-Y(3.9));
+  ctx.fillStyle='#9a7048'; rr(X(BOARD.x),Y(BOARD.y1),M*0.16,(BOARD.y1-BOARD.y0)*M,4); ctx.fill();
+  ctx.fillStyle='#eef0f5'; ctx.fillRect(X(BOARD.x)-2,Y(BOARD.y1)-4,M*0.2,5);
+  // rim and net
+  ctx.strokeStyle='#c2262e'; ctx.lineWidth=Math.max(3,M*0.05); ctx.beginPath(); ctx.ellipse(X(HOOP.x),Y(HOOP.y),HOOP.r*M,HOOP.r*M*0.25,0,0,Math.PI*2); ctx.stroke();
+  ctx.strokeStyle='rgba(240,236,246,.85)'; ctx.lineWidth=1.5;
+  for(var i=-3;i<=3;i++){ ctx.beginPath(); ctx.moveTo(X(HOOP.x+i*HOOP.r/3.2),Y(HOOP.y)); ctx.lineTo(X(HOOP.x+i*HOOP.r/5),Y(HOOP.y-0.42)); ctx.stroke(); }
+  ctx.beginPath(); ctx.moveTo(X(HOOP.x-HOOP.r*0.62),Y(HOOP.y-0.42)); ctx.lineTo(X(HOOP.x+HOOP.r*0.62),Y(HOOP.y-0.42)); ctx.stroke();
+}
+/* Tina's painted Clara, Uncle Joe and Bernie (Flow #35, #36, #39, #40; 2026-11-18). The painted ball was taken out of
+   their hands, so the game's own ball sits where it was. Sizes are in metres (M). The drawn people stay as a fallback. */
+function sprite(img,left,top,w,h,flip){ ctx.save(); if(flip){ ctx.translate(left+w,top); ctx.scale(-1,1); ctx.drawImage(img,0,0,w,h); } else ctx.drawImage(img,left,top,w,h); ctx.restore(); }
+function shadow(x,r){ ctx.fillStyle='rgba(60,50,90,.25)'; ctx.beginPath(); ctx.ellipse(X(x),Y(0),r*M,0.06*M,0,0,Math.PI*2); ctx.fill(); }
+function drawClara(x, shooting){
+  if(IMG['clara-shoot'] && IMG['clara-stand']){ CLARA_HAND=0.5; shadow(x,0.3);
+    if(G.turn==='clara'){ var im=IMG['clara-shoot'], h=1.42*M, w=h*im.width/im.height; sprite(im,X(x)-0.45*w,Y(0)-h,w,h); }   // ball centre lands at (x+0.5, 1.5)
+    else { var im2=IMG['clara-stand'], h2=1.38*M, w2=h2*im2.width/im2.height; sprite(im2,X(x)-w2/2,Y(0)-h2,w2,h2); }
+    return; }
+  var s=M/92, bx=X(x), by=Y(0);
+  ctx.save(); ctx.translate(bx,by);
+  ctx.fillStyle='rgba(60,50,90,.25)'; ctx.beginPath(); ctx.ellipse(0,0,22*s,5*s,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#2f4a7a'; ctx.fillRect(-10*s,-46*s,8*s,46*s); ctx.fillRect(2*s,-46*s,8*s,46*s);       // blue pants
+  ctx.fillStyle='#3a2a20'; ctx.fillRect(-12*s,-6*s,12*s,6*s); ctx.fillRect(1*s,-6*s,12*s,6*s);        // boots
+  ctx.fillStyle='#4f74a8'; rr(-15*s,-92*s,30*s,50*s,10*s); ctx.fill();                                // blue sweater
+  ctx.strokeStyle='#3d5f8f'; ctx.lineWidth=2*s; [-7,0,7].forEach(function(o){ ctx.beginPath(); ctx.moveTo(o*s,-88*s); ctx.lineTo(o*s,-46*s); ctx.stroke(); });
+  // arms up to shoot
+  ctx.strokeStyle='#4f74a8'; ctx.lineWidth=9*s; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(8*s,-84*s); ctx.lineTo(16*s,(shooting?-118:-104)*s); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-6*s,-84*s); ctx.lineTo(8*s,(shooting?-120:-106)*s); ctx.stroke();
+  ctx.fillStyle='#b8383a'; rr(-14*s,-96*s,28*s,9*s,4*s); ctx.fill(); ctx.fillRect(-12*s,-92*s,8*s,26*s);   // red plaid scarf
+  ctx.fillStyle='#e9c4a0'; ctx.beginPath(); ctx.arc(2*s,-108*s,12*s,0,Math.PI*2); ctx.fill();            // face
+  ctx.fillStyle='#6b3a1d'; ctx.beginPath(); ctx.arc(0,-112*s,13*s,Math.PI*0.9,Math.PI*2.05); ctx.fill();  // chestnut hair
+  ctx.beginPath(); ctx.ellipse(-12*s,-92*s,4*s,16*s,0.15,0,Math.PI*2); ctx.fill();                      // braid
+  ctx.fillStyle='#e9eef8'; ctx.beginPath(); ctx.arc(-11*s,-78*s,3.5*s,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#4f74a8'; ctx.beginPath(); ctx.arc(-8*s,-77*s,2.5*s,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+function drawJoe(x, shooting){
+  if(IMG['joe-shoot']){ var im=IMG['joe-shoot'], h=1.96*M, w=h*im.width/im.height; shadow(x,0.32); sprite(im,X(x)-0.45*w,Y(0)-h,w,h); return; }   // ball centre lands at (x+0.2, 2.05)
+  var s=M/100, bx=X(x), by=Y(0);
+  ctx.save(); ctx.translate(bx,by);
+  ctx.fillStyle='rgba(60,50,90,.25)'; ctx.beginPath(); ctx.ellipse(0,0,26*s,6*s,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#8f9096'; ctx.fillRect(-12*s,-80*s,10*s,80*s); ctx.fillRect(2*s,-80*s,10*s,80*s);        // light grey jeans
+  ctx.fillStyle='#7a5032'; ctx.fillRect(-15*s,-7*s,15*s,7*s); ctx.fillRect(1*s,-7*s,15*s,7*s);           // brown sneakers
+  ctx.fillStyle='#e8e2d4'; ctx.fillRect(-19*s,-138*s,38*s,10*s);
+  ctx.fillStyle='#2f4f9a'; rr(-19*s,-140*s,38*s,64*s,10*s); ctx.fill();                                // blue varsity sweater
+  ctx.fillStyle='#d9a23a'; ctx.fillRect(-19*s,-82*s,38*s,5*s); ctx.fillRect(-19*s,-88*s,38*s,2.5*s);     // gold stripes at the waist
+  ctx.strokeStyle='#d9a23a'; ctx.lineWidth=3*s; ctx.beginPath(); ctx.moveTo(-8*s,-140*s); ctx.lineTo(0,-126*s); ctx.lineTo(8*s,-140*s); ctx.stroke(); // V-neck
+  ctx.strokeStyle='#2f4f9a'; ctx.lineWidth=11*s; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(-14*s,-130*s); ctx.lineTo(shooting?-4*s:-26*s, shooting?-178*s:-96*s); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(14*s,-130*s); ctx.lineTo(shooting?12*s:26*s, shooting?-176*s:-98*s); ctx.stroke();
+  ctx.fillStyle='#d9a23a'; if(!shooting){ ctx.fillRect(-31*s,-100*s,10*s,4*s); ctx.fillRect(21*s,-102*s,10*s,4*s); }
+  ctx.fillStyle='#c79a72'; ctx.beginPath(); ctx.arc(0,-156*s,15*s,0,Math.PI*2); ctx.fill();               // warm tan face
+  ctx.fillStyle='#1f1a17'; for(var i=0;i<9;i++){ ctx.beginPath(); ctx.arc(-13*s+i*3.3*s,-168*s+Math.sin(i*1.7)*3*s,6*s,0,Math.PI*2); ctx.fill(); } // dark curly hair
+  ctx.strokeStyle='#5a3424'; ctx.lineWidth=2*s; ctx.beginPath(); ctx.arc(-2*s,-151*s,6*s,0.2,Math.PI-0.2); ctx.stroke(); // big smile
+  ctx.restore();
+}
+function drawBernie(x){
+  if(IMG['bernie-jump']){ var im=IMG['bernie-jump'], w=1.05*M, h=w*im.height/im.width, run0=G.bernie.mode!=='sit', back=G.bernie.mode==='return', lift=run0?Math.abs(Math.sin(G.bernie.t*7))*0.18*M:0;
+    shadow(x,0.4); ctx.save(); ctx.translate(X(x),Y(0)-lift); if(back) ctx.scale(-1,1); ctx.drawImage(im,-w/2,-h,w,h);
+    if(back) drawBallAt(0.33*w,-0.8*h,0.12*M);   // the ball in his mouth on the way back
+    ctx.restore(); return; }
+  var s=M/105, bx=X(x), by=Y(0), run=G.bernie.mode!=='sit', t=G.bernie.t;
+  ctx.save(); ctx.translate(bx,by); if(G.bernie.mode==='return') ctx.scale(-1,1);
+  ctx.fillStyle='rgba(60,50,90,.25)'; ctx.beginPath(); ctx.ellipse(0,0,36*s,6*s,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#e7e5ea'; var l=run?Math.sin(t*14)*6*s:0;
+  [[-22,l],[-12,-l],[14,-l],[24,l]].forEach(function(p){ ctx.fillRect((p[0]-3)*s+p[1],-22*s,7*s,22*s); });
+  ctx.fillStyle='#f2f1f4'; ctx.beginPath(); ctx.ellipse(0,-34*s,34*s,20*s,0,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(-36*s,-40*s+Math.sin(t*6)*3*s,10*s,6*s,-0.6,0,Math.PI*2); ctx.fill();     // plume tail
+  ctx.beginPath(); ctx.arc(30*s,-56*s,16*s,0,Math.PI*2); ctx.fill();                                       // head
+  ctx.beginPath(); ctx.ellipse(42*s,-50*s,9*s,7*s,0,0,Math.PI*2); ctx.fill();                               // muzzle
+  ctx.fillStyle='#d9d6e0'; ctx.beginPath(); ctx.ellipse(22*s,-52*s,6*s,11*s,0.3,0,Math.PI*2); ctx.fill();  // ear
+  ctx.fillStyle='#2b2626'; ctx.beginPath(); ctx.arc(50*s,-52*s,3.5*s,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(34*s,-60*s,2.2*s,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#d9a23a'; ctx.beginPath(); ctx.arc(28*s,-40*s,3.5*s,0,Math.PI*2); ctx.fill();             // round tag
+  if(G.bernie.mode==='return'){ drawBallAt(-46*s,-48*s,0.12*M); }
+  ctx.restore();
+}
+function drawBallAt(x,y,r){
+  ctx.fillStyle='#c8652e'; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#4a2a14'; ctx.lineWidth=Math.max(1.2,r*0.12); ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.moveTo(x-r,y); ctx.lineTo(x+r,y); ctx.moveTo(x,y-r); ctx.lineTo(x,y+r); ctx.stroke();
+}
+function drawGuide(){
+  if(S.guide!=='on'||G.turn!=='clara'||G.phase!=='aim') return;
+  var o=launchFrom('clara'), a=G.angle*Math.PI/180, v=hold?powerToSpeed(G.power):powerToSpeed(0.5), vx=Math.cos(a)*v, vy=Math.sin(a)*v;
+  ctx.fillStyle='rgba(247,207,122,.85)';
+  for(var t=0.08;t<1.6;t+=0.08){ var x=o.x+vx*t, y=o.y+vy*t-0.5*GRAV*t*t; if(y<0||x>BOARD.x) break; ctx.beginPath(); ctx.arc(X(x),Y(y),Math.max(2.5,M*0.045),0,Math.PI*2); ctx.fill(); }
+}
+function drawMeter(){
+  if(G.turn!=='clara'||G.phase!=='aim') return;
+  var x=X(G.claraX)-M*1.0, y=Y(2.5), h=M*1.5, w=M*0.26;
+  ctx.fillStyle='rgba(26,24,22,.85)'; rr(x-6,y-6,w+12,h+12,10); ctx.fill();
+  ctx.fillStyle='rgba(168,216,180,.35)'; ctx.fillRect(x,y+h*(1-0.62),w,h*0.24);      // the sweet spot band
+  ctx.fillStyle='#f5cf85'; ctx.fillRect(x,y+h*(1-G.power),w,h*G.power);
+  ctx.strokeStyle='#ece6da'; ctx.lineWidth=2; ctx.strokeRect(x,y,w,h);
+  ctx.fillStyle='#f6eedc'; ctx.font='700 '+Math.max(16,M*0.26)+'px "Atkinson Hyperlegible", sans-serif'; ctx.textAlign='center'; ctx.fillText('Power',x+w/2,y+h+Math.max(22,M*0.4));
+}
+function draw(){
+  drawYard(); drawHoop();
+  drawBernie(G.bernie.x);
+  drawJoe(G.joeX, G.turn==='joe' && G.phase==='flight');
+  drawClara(G.claraX, G.turn==='clara' && (hold||G.phase==='flight'));
+  drawGuide(); drawMeter();
+  if(G.ball && G.bernie.mode!=='return') drawBallAt(X(G.ball.x),Y(G.ball.y),0.12*M);
+  else if(!G.ball && G.turn==='clara') drawBallAt(X(G.claraX+CLARA_HAND),Y(1.5),0.12*M);
+  else if(!G.ball && G.turn==='joe') { if(IMG['joe-shoot']) drawBallAt(X(G.joeX+0.2),Y(2.05),0.12*M); else drawBallAt(X(G.joeX+0.25),Y(1.25),0.12*M); }
+  if(S.calm!=='on'){ ctx.fillStyle='rgba(245,242,250,.85)'; flakes.forEach(function(f){ f.y+=f.v*0.016; f.x+=Math.sin(G.t+f.p)*0.3; if(f.y>H){f.y=-4;f.x=Math.random()*W;} ctx.beginPath(); ctx.arc(f.x,f.y,f.r,0,Math.PI*2); ctx.fill(); }); }
+}
+
+/* ---------- loop ---------- */
+function frame(ts){ if(!running){ draw(); return; } var dt=Math.max(0,Math.min(0.05,(ts-last)/1000||0)); last=ts; if(!paused) update(dt); draw(); requestAnimationFrame(frame); }
+function start(){
+  $('endVid').pause();
+  newGame(); $('startOver').hidden=true; $('endOver').hidden=true; paused=false; $('pauseBtn').setAttribute('aria-pressed','false'); $('pauseBtn').textContent='Pause';
+  flakes=[]; for(var i=0;i<70;i++) flakes.push({x:Math.random()*W,y:Math.random()*H,v:20+Math.random()*40,r:1+Math.random()*1.8,p:Math.random()*6});
+  setTrack(KIND_MUSIC[S.kind]||KIND_MUSIC.kind);
+  if(S.music==='on'){ music.volume=0.22; safePlay(music); }
+  play('door',0.7); caption('[The back screen door creaks and bangs shut]',2400);
+  setTimeout(function(){ if(running){ joeSays('start',4600); claraSays('start'); } },1300);
+  running=true; last=performance.now(); requestAnimationFrame(frame);
+}
+function togglePause(){ if(!running) return; paused=!paused; $('pauseBtn').setAttribute('aria-pressed',paused?'true':'false'); $('pauseBtn').textContent=paused?'Paused':'Pause'; if(paused){ music.pause(); if(joeV) joeV.pause(); caption('Paused. Press Pause again to keep playing.',3000);} else { if(S.music==='on') safePlay(music); if(joeV && !joeV.ended) safePlay(joeV); } }
+$('startBtn').addEventListener('click',start);
+$('againBtn').addEventListener('click',start);
+$('pauseBtn').addEventListener('click',togglePause);
+$('setBtn').addEventListener('click',function(){ if(running&&!paused) togglePause(); $('setOver').hidden=false; $('setDone').focus(); });
+$('setDone').addEventListener('click',function(){ $('setOver').hidden=true; });
+
+/* testing helper: take a shot at a given power and step until the next turn */
+window.bbWin=function(){ G.clara=7; G.joe=3; end(); return 'ok'; };
+window.bbShoot=function(power){ if(!G||G.phase!=='aim'||G.turn!=='clara') return G?G.phase+'/'+G.turn:'no game'; G.claraX=G.spot; G.power=power; shoot('clara',G.angle,powerToSpeed(power)); return 'shot'; };
+window.bbTest=function(power){ if(G.phase!=='aim'||G.turn!=='clara') return 'not your turn'; G.power=power; shoot('clara',G.angle,powerToSpeed(power)); for(var i=0;i<600&&running;i++){ update(1/60); if(G.turn==='clara'&&G.phase==='aim') break; } draw(); return {clara:G.clara, joe:G.joe, phase:G.phase, turn:G.turn}; };
+
+resize(); newGame(); apply(); draw();
+})();
+</script>
+<script>/* SMALL-SCREEN start (tools/small_screen.py): Hide panels, Box size, Speech boxes */
+(function(){
+  var r=document.documentElement, P='bb-';
+  function g(k){ try{ return localStorage.getItem(P+k); }catch(e){ return null; } }
+  function s(k,v){ try{ localStorage.setItem(P+k,v); }catch(e){} }
+  var small=(innerWidth<760 || innerHeight<560);
+  var st={ panels:g('panels')||(small?'folded':'open'), box:g('box')||(small?'s':'m'), words:g('wordsbox')||'on' };
+  var bar=document.querySelector('.bar'), btn=document.createElement('button'); btn.id='panelsBtn'; btn.type='button';
+  bar.insertBefore(btn, bar.firstChild);
+  btn.addEventListener('click',function(){ st.panels= st.panels==='folded'?'open':'folded'; s('panels',st.panels); apply(); btn.blur(); });
+  var rows=[['panels','Panels (top bar and buttons)',[['open','Full size'],['folded','Folded small']]],
+            ['box','Speech box size',[['s','Small'],['m','Medium'],['l','Large']]]];
+  if(true) rows.push(['words','Speech boxes',[['on','Show the words'],['off','Voice only']]]);
+  var done=document.getElementById('setDone').closest('.row');
+  rows.forEach(function(row){ var d=document.createElement('div'); d.className='set';
+    d.innerHTML='<b>'+row[1]+'</b><div class="seg" data-k2="'+row[0]+'">'+row[2].map(function(o){ return '<button type="button" data-v2="'+o[0]+'">'+o[1]+'</button>'; }).join('')+'</div>';
+    done.parentNode.insertBefore(d,done);
+    d.querySelector('.seg').addEventListener('click',function(e){ var b=e.target.closest('button'); if(!b) return; st[row[0]]=b.dataset.v2; s(row[0]==='words'?'wordsbox':row[0],b.dataset.v2); apply(); }); });
+  function apply(){
+    r.classList.toggle('compact', st.panels==='folded'); r.setAttribute('data-box',st.box); r.classList.toggle('nobox', st.words==='off');
+    btn.textContent= st.panels==='folded' ? 'Show panels' : 'Hide panels'; btn.setAttribute('aria-expanded', st.panels==='folded'?'false':'true');
+    document.querySelectorAll('.seg[data-k2]').forEach(function(seg){ seg.querySelectorAll('button').forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.v2===st[seg.dataset.k2]?'true':'false'); }); });
+    setTimeout(function(){ dispatchEvent(new Event('resize')); },30);
+  }
+  apply();
+})();
+/* SMALL-SCREEN end */</script>

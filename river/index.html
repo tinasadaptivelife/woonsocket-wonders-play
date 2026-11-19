@@ -1,0 +1,473 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Razzle's River Crossing</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Playfair+Display:wght@700&display=swap">
+<style>
+/* Layout: one-screen game. Big control bar on top; the Blackstone River seen from above below it, with logs and ice
+   drifting across; Razzle's words in a box; big hop buttons along the bottom. */
+:root {
+  --page:#2b2b2b; --panel:#363636; --well:#242424; --ink:#ece6da; --muted:#cfc6b6; --line:#8a8070;
+  --holly:#a8d8b4; --holly-tint:#2f4a3a; --lamp:#f5cf85; --berry:#f0a0aa; --scrim:#1a1816; --cap:#f6eedc; --focus:#f5cf85;
+  --read:"Atkinson Hyperlegible","Segoe UI",Verdana,sans-serif; --title:"Playfair Display",Georgia,serif;
+  --scale:1; color-scheme: dark;
+}
+:root[data-look="sand"] { --page:#d6ccb5; --panel:#e4dac4; --well:#cbbfa4; --ink:#111111; --muted:#3a332b; --line:#4a4038; --holly:#1f4a30; --holly-tint:#cfe0cc; --lamp:#6b4510; --berry:#7a1424; --focus:#1f4a30; color-scheme: light; }
+:root[data-look="light"] { --page:#e9e2d2; --panel:#f1ebdd; --well:#ddd4c0; --ink:#111111; --muted:#3a332b; --line:#4a4038; --holly:#1f4a30; --holly-tint:#cfe0cc; --lamp:#6b4510; --berry:#7a1424; --focus:#1f4a30; color-scheme: light; }
+:root[data-look="contrast"] { --page:#c9c9c9; --panel:#d9d9d9; --well:#bdbdbd; --ink:#000; --muted:#1a1a1a; --line:#000; --holly:#0e3320; --holly-tint:#b8d4bc; --lamp:#4a2e00; --berry:#5a0010; --focus:#000; color-scheme: light; }
+html, body { height:100%; }
+html { font-size: calc(20px * var(--scale)); }
+body { margin:0; background:var(--page); color:var(--ink); font:400 1rem/1.5 var(--read); overflow:hidden; }
+body::before { content:""; position:fixed; inset:0 0 auto; height:env(safe-area-inset-top,0px); z-index:10; background:var(--panel); }
+.app { height:100%; display:grid; grid-template-rows:auto 1fr auto; }
+.bar { background:var(--panel); border-bottom:3px solid var(--line); padding-block:8px; padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center; }
+.home { font-weight:700; font-size:1.05rem; color:var(--ink); background:var(--well); border:3px solid var(--line); border-radius:12px; padding:6px 12px; text-decoration:none; }
+.home:focus-visible { outline:4px solid var(--focus); outline-offset:2px; }
+.bar h1 { margin:0 auto 0 0; font:700 1.3rem/1.1 var(--title); color:var(--holly); }
+.score { font-weight:700; font-size:1.1rem; font-variant-numeric:tabular-nums; }
+.foot { background:var(--panel); border-top:3px solid var(--line); padding-block:8px calc(8px + env(safe-area-inset-bottom,0px)); padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); display:flex; flex-wrap:wrap; gap:10px; justify-content:center; align-items:center; }
+.foot button.hop { min-width:120px; min-height:64px; font-size:1.05rem; }
+button { font:700 0.9rem/1.2 var(--read); color:var(--ink); background:var(--well); border:3px solid var(--line); border-radius:12px; min-height:52px; min-width:52px; padding:0 16px; cursor:pointer; touch-action:none; }
+button.primary { background:var(--holly-tint); border-color:var(--holly); }
+button[aria-pressed="true"] { background:var(--holly-tint); border-color:var(--holly); }
+button[aria-pressed="true"]::before { content:"\2713  "; }
+button:focus-visible { outline:3px solid var(--focus); outline-offset:3px; }
+.stage { position:relative; min-height:0; }
+canvas { display:block; width:100%; height:100%; touch-action:none; }
+.talk { position:absolute; bottom:12px; left:max(14px,env(safe-area-inset-left,0px)); max-width:min(520px,calc(100% - 28px)); background:var(--panel); border:3px solid var(--line); border-radius:16px; padding:12px 18px; }
+.talk b { display:block; font-size:1rem; color:var(--berry); }
+.talk p { margin:0; font-size:1.15rem; line-height:1.45; }
+.cap { position:absolute; left:50%; top:10px; transform:translateX(-50%); max-width:min(900px,calc(100% - 32px)); background:var(--scrim); color:var(--cap); font:700 1.1rem/1.45 var(--read); padding:12px 24px; border-radius:12px; text-align:center; }
+.over { position:absolute; inset:0; display:grid; place-items:safe center; padding:24px max(16px,env(safe-area-inset-left,0px)); background:rgba(20,18,16,.55); overflow:auto; }
+.over[hidden] { display:none; }
+.sheet { width:min(820px,100%); background:var(--panel); border:3px solid var(--line); border-radius:18px; overflow:hidden; display:grid; }
+.sheet img.art { width:100%; aspect-ratio:16/8; object-fit:cover; display:block; border-bottom:3px solid var(--line); }
+.sheet img.art[hidden], .sheet video.art[hidden] { display:none; }
+.sheet video.art { width:100%; aspect-ratio:16/8; object-fit:cover; display:block; border-bottom:3px solid var(--line); }
+.sheet .in { padding:24px; display:grid; gap:14px; }
+.sheet h2 { margin:0; font:700 2rem/1.1 var(--title); color:var(--holly); text-wrap:balance; }
+.sheet p { margin:0; max-width:62ch; }
+.sheet ul { margin:0; padding-left:1.2em; display:grid; gap:6px; }
+.row { display:flex; flex-wrap:wrap; gap:12px; }
+.set { display:grid; gap:8px; padding:12px; background:var(--well); border-radius:12px; }
+.seg { display:flex; flex-wrap:wrap; gap:8px; }
+.big { font-size:1.6rem; font-weight:700; color:var(--lamp); }
+.note { color:var(--muted); }
+/* SMALL-SCREEN start (tools/small_screen.py) */
+#panelsBtn { white-space:nowrap; }
+:root.compact .bar { padding-block:4px; gap:6px 10px; }
+:root.compact .bar > :not(#panelsBtn):not(#pauseBtn):not(.score) { display:none !important; }
+:root.compact .bar button { min-height:44px; padding:0 12px; font-size:0.8rem; }
+:root.compact .bar .score { font-size:0.85rem; margin-right:auto; }
+:root.compact .foot { padding-block:4px calc(4px + env(safe-area-inset-bottom,0px)); gap:6px; }
+:root.compact .foot button { min-height:44px; min-width:44px; padding:0 10px; font-size:0.8rem; }
+:root.compact .foot .shoot { min-width:120px; min-height:48px; }
+:root.compact .foot .hint { display:none; }
+:root.compact .dad,:root.compact .talk,:root.compact .joe,:root.compact .clara,:root.compact .say { top:auto !important; bottom:8px; left:8px; right:8px; max-width:none; padding:6px 12px; border-radius:12px; gap:8px; }
+:root.compact .dad img,:root.compact .talk img,:root.compact .joe img,:root.compact .clara img,:root.compact .say img { display:none; }
+:root.compact .dad small,:root.compact .talk small,:root.compact .joe small,:root.compact .clara small,:root.compact .say small { display:none; }
+:root.compact .cap { bottom:auto; top:8px; }
+:root[data-box="s"] .dad p,:root[data-box="s"] .talk p,:root[data-box="s"] .joe p,:root[data-box="s"] .clara p,:root[data-box="s"] .say p, :root[data-box="s"] .cap { font-size:0.85rem; line-height:1.35; }
+:root[data-box="s"] .dad b,:root[data-box="s"] .talk b,:root[data-box="s"] .joe b,:root[data-box="s"] .clara b,:root[data-box="s"] .say b { font-size:0.8rem; }
+:root[data-box="l"] .dad p,:root[data-box="l"] .talk p,:root[data-box="l"] .joe p,:root[data-box="l"] .clara p,:root[data-box="l"] .say p, :root[data-box="l"] .cap { font-size:1.3rem; }
+:root.nobox .dad,:root.nobox .talk,:root.nobox .joe,:root.nobox .clara,:root.nobox .say { display:none !important; }
+/* SMALL-SCREEN end */
+.talk { display:flex; gap:14px; align-items:center; }
+.talk[hidden] { display:none; }
+.spk { width:72px; height:72px; border-radius:12px; border:3px solid var(--line); object-fit:cover; flex:none; }
+.spk[hidden] { display:none; }
+.spk.cut { object-fit:contain; background:var(--well); }
+</style>
+
+<div class="app">
+  <header class="bar">
+    <a class="home" id="homeLink" href="../" hidden>&larr; All games</a>
+    <h1>Razzle's River Crossing</h1>
+    <span class="score" id="scoreText" aria-live="polite">Level 1 · Score 0 · Tries 5</span>
+    <button id="pauseBtn" aria-pressed="false">Pause</button>
+    <button id="setBtn">Settings</button>
+  </header>
+  <div class="stage" id="stage">
+    <canvas id="cv" tabindex="0" aria-label="The Blackstone River from above in winter. Logs and ice drift across. Razzle the raspberry hops from the near bank toward the raspberry bush on the far bank"></canvas>
+    <div class="talk" id="talkBox" hidden><img class="spk" id="talkPic" src="art/razzle.png" alt=""><div><b id="talkWho">Razzle</b><p id="talkLine"></p></div></div>
+    <p class="cap" id="cap" hidden></p>
+
+    <div class="over" id="startOver">
+      <div class="sheet">
+        <img class="art" id="startArt" src="art/river-crossing.jpg" alt="Tina's painting of the frozen Blackstone River with logs and ice in the water" hidden>
+        <div class="in">
+          <h2>Razzle's River Crossing</h2>
+          <p>The sacred raspberry bush is on the far bank of the Blackstone, and Razzle needs to get there. Logs and ice floes drift across the river. Hop from one to the next. Never the water!</p>
+          <div class="set"><b>Difficulty</b><div class="seg" data-key="diff"><button data-v="easy">Easy</button><button data-v="medium">Medium</button><button data-v="hard">Hard</button></div>
+            <b>Start at level</b><div class="seg" data-key="lvl"><button data-v="1">1</button><button data-v="2">2</button><button data-v="3">3</button><button data-v="4">4</button><button data-v="5">5</button></div></div>
+          <div class="row"><button class="primary" id="startBtn">Start crossing</button></div>
+          <h3 style="margin:0">How to play</h3>
+          <ul>
+            <li><b>Hop</b> with the <b>arrow keys</b>, the big <b>Hop</b> buttons, or click or tap next to Razzle.</li>
+            <li>A log or ice floe carries Razzle along. If it drifts out of the river, hop off first.</li>
+            <li>Bring Razzle into each of the <b>3 gaps in the bush</b> to finish a level. There are <b>5 levels</b>.</li>
+            <li>Floating raspberries are bonus points. Green rings show where a hop is safe.</li>
+          </ul>
+          <p class="note">Razzle's lines are written for the game, not from the show. Her voice is AI-generated from her podcast voice.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="over" id="endOver" hidden>
+      <div class="sheet"><video class="art" id="endVid" src="art/razzle-bush.mp4" poster="art/razzle-bush.jpg" muted loop playsinline preload="none" hidden aria-label="Razzle wriggles happily into the snowy raspberry bush while Bernie wags on the far bank of the river"></video><img class="art" id="endPic" src="art/razzle-bush.jpg" alt="Razzle tucked happily in the snowy raspberry bush, Bernie watching from across the river" hidden><div class="in">
+        <h2 id="endTitle">Good game!</h2>
+        <p class="big" id="endScore"></p>
+        <p id="endNote"></p>
+        <div class="row"><button class="primary" id="againBtn">Play again</button><button id="menuBtn">Start screen</button></div>
+      </div></div>
+    </div>
+
+    <div class="over" id="setOver" hidden>
+      <div class="sheet"><div class="in">
+        <h2>Settings</h2>
+        <div class="set"><b>Look</b><div class="seg" data-key="look"><button data-v="dusk">Dark soft</button><button data-v="sand">Dim sand</button><button data-v="light">Light</button><button data-v="contrast">Extra contrast</button></div></div>
+        <div class="set"><b>Text size</b><div class="seg" data-key="size"><button data-v="1">Large</button><button data-v="1.2">Larger</button><button data-v="1.4">Largest</button></div></div>
+        <div class="set"><b>Difficulty</b><div class="seg" data-key="diff"><button data-v="easy">Easy</button><button data-v="medium">Medium</button><button data-v="hard">Hard</button></div></div>
+        <div class="set"><b>Hop helper (green rings where a hop is safe)</b><div class="seg" data-key="guide"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="set"><b>Music</b><div class="seg" data-key="music"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="set"><b>Sounds</b><div class="seg" data-key="sfx"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="set"><b>Razzle's voice</b><div class="seg" data-key="voice"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="set"><b>Sound captions</b><div class="seg" data-key="caps"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="row"><button class="primary" id="setDone">Done</button></div>
+      </div></div>
+    </div>
+  </div>
+  <footer class="foot">
+    <button class="hop" id="hopL" aria-label="Hop left">&larr; Left</button>
+    <button class="hop primary" id="hopU" aria-label="Hop forward">&uarr; Hop</button>
+    <button class="hop" id="hopD" aria-label="Hop back">&darr; Back</button>
+    <button class="hop" id="hopR" aria-label="Hop right">Right &rarr;</button>
+  </footer>
+</div>
+
+<script>
+(function(){
+'use strict';
+document.getElementById('homeLink').hidden=false;
+var $=function(id){return document.getElementById(id);}, root=document.documentElement;
+function lget(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+function lset(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+var S={ look:lget('rv-look')||'dusk', size:lget('rv-size')||'1', diff:lget('rv-diff')||'easy', lvl:lget('rv-lvl')||'1', guide:lget('rv-guide')||'on', music:lget('rv-music')||'on', sfx:lget('rv-sfx')||'on', voice:lget('rv-voice')||'on', caps:lget('rv-caps')||'on' };
+(function(){ var i=new Image(); i.onload=function(){ $('startArt').hidden=false; }; i.src=$('startArt').src; })();
+
+/* ---------- sound ---------- */
+function snd(src,loop,vol){ var a=new Audio(src); a.loop=!!loop; a.volume=vol; a.preload='auto'; return a; }
+var music=snd('audio/music-razzle-1-2.mp3',true,0.18),   /* Tina's songs: levels 1-2, 3-4 and 5 (2026-11-18) */ river=snd('audio/sfx/river.mp3',true,0.22);
+var SFX={ woof:'audio/sfx/bernie-woof.mp3', caw:'audio/sfx/crow-caw.mp3', whiskers:'audio/sfx/whiskers.mp3' };
+function play(n,v){ if(S.sfx!=='on') return; var a=new Audio(SFX[n]); a.volume=v==null?0.7:v; safePlay(a); }
+function safePlay(a){ var p=a.play(); if(p&&p.catch) p.catch(function(){}); }
+function setTrack(src){ if(music.getAttribute('src')===src) return; var was=!music.paused; music.src=src; music.load(); if(was) safePlay(music); }
+var AC=null;
+function ac(){ try{ AC=AC||new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} return AC; }
+function tone(f1,f2,dur,vol,type){ if(S.sfx!=='on'||!ac()) return; var t=AC.currentTime, o=AC.createOscillator(), g=AC.createGain(); o.type=type||'sine'; o.frequency.setValueAtTime(f1,t); o.frequency.exponentialRampToValueAtTime(f2,t+dur); g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(vol,t+0.01); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+dur+0.02); }
+function noise(dur,vol,lo,hi){ if(S.sfx!=='on'||!ac()) return; var n=Math.floor(AC.sampleRate*dur), b=AC.createBuffer(1,n,AC.sampleRate), d=b.getChannelData(0); for(var i=0;i<n;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/n,1.5);
+  var s=AC.createBufferSource(); s.buffer=b; var f=AC.createBiquadFilter(); f.type='lowpass'; f.frequency.setValueAtTime(hi,AC.currentTime); f.frequency.linearRampToValueAtTime(lo,AC.currentTime+dur); var g=AC.createGain(); g.gain.value=vol; s.connect(f); f.connect(g); g.connect(AC.destination); s.start(); }
+function hopSound(){ tone(420,760,0.12,0.08,'triangle'); }
+function splashSound(){ noise(0.7,0.5,300,2400); }
+function berrySound(){ tone(880,1320,0.15,0.08,'triangle'); setTimeout(function(){ tone(1320,1760,0.18,0.07,'triangle'); },110); }
+function chime(){ [523,659,784,1047].forEach(function(f,i){ setTimeout(function(){ tone(f,f*1.01,0.4,0.09,'triangle'); },i*120); }); }
+var capT=null; function caption(t,ms){ if(S.caps!=='on') return; var c=$('cap'); c.textContent=t; c.hidden=false; clearTimeout(capT); capT=setTimeout(function(){c.hidden=true;},ms||2400); }
+
+/* ---------- Razzle talks (Chatterbox Turbo with her podcast voice; audio/voice/<id>.mp3) ---------- */
+var LINES={ "clara-start-1": "You can do it, Razzle! Watch the logs.", "clara-hop-1": "Nice hop, Razzle!", "clara-ice-1": "Careful, that ice is thin!", "clara-berry-1": "She got a raspberry!", "clara-splash-1": "Oh no! Razzle, are you okay?", "clara-splash-2": "Shake it off, little buddy.", "clara-level-1": "She made it! Bernie, look!", "clara-win-1": "Raspberries for everybody!",
+  'crow-remember-1':"Remember, Clara Beaumont.",
+  'razzle-start-1':"The raspberry bush is on the far bank! Logs, logs, lovely logs. Jump on the logs, never the water!",
+  'razzle-start-2':"Right. River crossing. I have done this four hundred and twelve times. Mostly successfully.",
+  'razzle-hop-1':"Hup!", 'razzle-hop-2':"Wheee!", 'razzle-hop-3':"Steady, steady.",
+  'razzle-splash-1':"Brrr! Cold! Very cold! Not my favorite way to be wet.", 'razzle-splash-2':"I meant to do that. I did not mean to do that.", 'razzle-splash-3':"Back to the bank. Dignity intact. Mostly.",
+  'razzle-berry-1':"A berry! Hold it gently. One berry at a time.", 'razzle-berry-2':"Ooh, a floating raspberry. That one's been waiting for us.",
+  'razzle-home-1':"Made it! The bush! The beautiful, enormous, impossible bush!", 'razzle-home-2':"Across! Across, across, across! I told the river I could do it.",
+  'razzle-level-1':"The river's moving faster now. It does that when it's excited. Or worried. Let's say excited.", 'razzle-level-2':"More logs, more ice. Hold on to your leaves.",
+  'razzle-ice-1':"Ice floes are slippery! Small steps, big courage.", 'razzle-bernie-1':"Bernie, don't you dare lick me when I get back. Oh, he's going to lick me.",
+  'razzle-crow-1':"Is that the crow watching? Show-off. Crows can fly. That's cheating.", 'razzle-wait-1':"Take your time. The river is patient, even when I'm not.",
+  'razzle-win-1':"Every crossing, every berry! The Guardian of the Sacred Raspberry Bushes is extremely proud of you.",
+  'razzle-lose-1':"That's enough splashing for one day. We'll try again. The river always gives you another turn." };
+var talkV=null, talkT=null, TQ=[], busyTill=0;
+function readMs(t){ return 1600 + t.split(/\s+/).length*460; }
+function talking(){ return (talkV && !talkV.ended && !talkV.paused) || Date.now()<busyTill; }
+function musicLevel(){ return S.music!=='on' ? 0 : (talking()?0.07:0.18); }
+function say(id, important){ if(talking()||TQ.length){ if(important ? TQ.length<3 : false) TQ.push(id); return; } speak(id); }
+function speak(id){ var t=LINES[id]; if(!t) return; var cl=id.indexOf('clara')===0, cw=id.indexOf('crow')===0; $('talkWho').textContent=cl?'Clara':cw?'The Chronal Crow':'Razzle'; $('talkWho').style.color=cl?'#9fc0f0':cw?'#c8d4dc':''; var tp=$('talkPic'); tp.src= cl?'art/clara-face.jpg':cw?'art/crow-empty.png':'art/razzle.png'; tp.className= cl?'spk':'spk cut'; tp.alt= cl?'Clara, chestnut braids and rosy cheeks, from Tina’s Storykeeper film':cw?'The Chronal Crow with his silver tail feather':'Razzle the raspberry in her striped scarf'; $('talkLine').textContent=t; $('talkBox').hidden=false; clearTimeout(talkT); if(talkV){ talkV.pause(); talkV=null; }
+  var ms=readMs(t); busyTill=Date.now()+ms;
+  if(S.voice==='on'){ var v=new Audio('audio/voice/'+id+'.mp3'); talkV=v; v.addEventListener('loadedmetadata',function(){ if(v===talkV && isFinite(v.duration)){ var full=Math.max(ms,v.duration*1000+1000); busyTill=Date.now()+full; clearTimeout(talkT); talkT=setTimeout(hideTalk,full); } }); safePlay(v); }
+  talkT=setTimeout(hideTalk,ms); music.volume=musicLevel(); }
+function hideTalk(){ if(paused){ clearTimeout(talkT); talkT=setTimeout(hideTalk,500); return; } if(talkV && !talkV.ended && !talkV.paused){ clearTimeout(talkT); talkT=setTimeout(hideTalk,400); return; }
+  $('talkBox').hidden=true; busyTill=0; music.volume=musicLevel(); if(TQ.length){ busyTill=Date.now()+500; setTimeout(function(){ if(TQ.length){ busyTill=0; speak(TQ.shift()); } },450); } }
+function hush(){ TQ=[]; clearTimeout(talkT); if(talkV){ talkV.pause(); talkV=null; } busyTill=0; $('talkBox').hidden=true; }
+function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
+
+/* ---------- settings ---------- */
+function apply(){
+  if(S.look==='dusk') root.removeAttribute('data-look'); else root.setAttribute('data-look',S.look);
+  root.style.setProperty('--scale',S.size);
+  document.querySelectorAll('.seg[data-key]').forEach(function(seg){ seg.querySelectorAll('button').forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.v===S[seg.dataset.key]?'true':'false'); }); });
+  music.volume=musicLevel(); if(S.music!=='on') music.pause(); else if(running&&!paused) safePlay(music);
+  river.volume= S.sfx==='on'?0.22:0; if(S.voice!=='on' && talkV){ talkV.pause(); talkV=null; } if(S.caps!=='on') $('cap').hidden=true;
+  resize(); }
+document.querySelectorAll('.seg[data-key]').forEach(function(seg){ seg.addEventListener('click',function(e){ var b=e.target.closest('button'); if(!b) return; S[seg.dataset.key]=b.dataset.v; lset('rv-'+seg.dataset.key,b.dataset.v); apply(); }); });
+function D(){ return {easy:{sp:0.75,logLen:[4,5],gap:[2,3],lives:5,dip:false}, medium:{sp:1.1,logLen:[3,4],gap:[2,4],lives:4,dip:true}, hard:{sp:1.5,logLen:[2,3],gap:[3,4],lives:3,dip:true}}[S.diff]; }
+
+/* ---------- the river ---------- */
+var COLS=13, NOOKS=[2,6,10], LEVEL=1, MAXL=5;
+var G=null, running=false, paused=false, last=0;
+function rnd(a,b){ return a+Math.floor(Math.random()*(b-a+1)); }
+function newLevel(keep){
+  var d=D(), N=4+LEVEL, lanes=[], mults=[1,1.3,0.8,1.5,1.1,0.9,1.4,1.2,1.0];
+  for(var r=1;r<=N;r++){ var ice = LEVEL>=2 && r%3===2, dir = r%2? 1 : -1, sp = d.sp*mults[(r-1)%mults.length]*(1+0.12*(LEVEL-1))*(ice?0.85:1), span=COLS+8, objs=[], x=Math.random()*3;
+    while(x<span-1){ var len= ice ? rnd(2,3) : rnd(d.logLen[0],d.logLen[1]); if(x+len>span) break;
+      var o={x:x,len:len,kind:ice?'ice':'log', dip: ice && d.dip && LEVEL>=(S.diff==='hard'?3:4) && Math.random()<0.5, ph:Math.random()};
+      if(!ice && Math.random()<0.28) o.berry=rnd(0,len-1);
+      objs.push(o); x+=len+rnd(d.gap[0],d.gap[1]); }
+    lanes.push({row:r,dir:dir,sp:sp,span:span,objs:objs,kind:ice?'ice':'log'}); }
+  setTrack(LEVEL>=5?'audio/music-razzle-5.mp3':LEVEL>=3?'audio/music-razzle-3-4.mp3':'audio/music-razzle-1-2.mp3');
+  var carry= keep&&G ? {score:G.score,lives:G.lives} : null;
+  G={ N:N, lanes:lanes, homes:[false,false,false], score:carry?carry.score:0, lives:carry?Math.min(d.lives+2,carry.lives+1):d.lives, berries:0, best:0, over:false, won:false, t:0, idle:0,
+      me:{col:6,row:0,x:6,hop:0,fx:6,fr:0,tx:6,tr:0,on:null,splash:0,face:0}, bernie:{lick:0}, crow:LEVEL>=2, saves:(S.diff==='easy'?2:1), saveFx:null, thief:null, thiefT:14+Math.random()*10, whisk:{x:-2,row:Math.max(1,Math.floor(N/2)),t:0} };
+  updScore(); resize(); }
+function updScore(){ if(G) $('scoreText').textContent='Level '+LEVEL+' · Score '+G.score+' · Tries '+G.lives; }
+function wrapX(o,lane){ var x=((o.x%lane.span)+lane.span)%lane.span; return x-4; }   // lane runs from -4 to COLS+4
+function objAt(row,x){ var lane=G.lanes[row-1]; if(!lane) return null;
+  for(var i=0;i<lane.objs.length;i++){ var o=lane.objs[i], ox=wrapX(o,lane); if(o.dip && dipped(o)) continue;
+    for(var k=-1;k<=1;k++){ var sx=ox+k*lane.span; if(x>=sx-0.35 && x<=sx+o.len-0.65) return {o:o,lane:lane,sx:sx}; } }
+  return null; }
+function dipped(o){ var p=(o.ph+G.t*0.18)%1; return p>0.78; }
+function sinking(o){ var p=(o.ph+G.t*0.18)%1; return p>0.62 && p<=0.78; }
+
+/* ---------- hopping ---------- */
+function hop(dx,dy){ if(!G||!running||paused||G.over) return; var m=G.me; if(m.hop>0||m.splash>0||m.homeT>0) return;
+  var nc=Math.round(m.x)+dx, nr=m.row+dy; if(m.row>0 && m.row<=G.N && dx===0) nc=m.x; // on a log, hop straight up from where she stands
+  if(dx!==0) nc=Math.round(m.x)+dx;
+  if(nc<0||nc>COLS-1||nr<0||nr>G.N+1) return;
+  m.fx=m.x; m.fr=m.row; m.tx=nc; m.tr=nr; m.hop=0.18; m.face=dx; m.on=null; G.idle=0; hopSound();
+  if(Math.random()<0.06) say(pick(['razzle-hop-1','razzle-hop-2','razzle-hop-3'])); }
+function land(){ var m=G.me; m.x=m.tx; m.row=m.tr; var d=D();
+  if(m.row===0){ return; }
+  if(m.row===G.N+1){ // the far bank: the bush has 3 gaps
+    var best=-1, bd=99; NOOKS.forEach(function(c,i){ if(!G.homes[i]){ var dd=Math.abs(c-m.x); if(dd<bd){ bd=dd; best=i; } } });
+    var reach = S.diff==='easy' ? 99 : S.diff==='medium' ? 2.2 : 1.2;
+    if(best>=0 && bd<=reach){ home(best); return; }
+    m.row=G.N; m.x=m.fx; m.tr=G.N; var under=objAt(G.N,m.x); if(under){ m.on=under; } caption('[Rustle] The bush is too thick there. Find a gap!',1800); tone(300,200,0.15,0.06,'square'); if(!under) splash(); return; }
+  var under=objAt(m.row,m.x);
+  if(under){ m.on=under; if(under.o.berry!=null){ var bx=under.sx+under.o.berry; if(Math.abs(bx-m.x)<0.7){ under.o.berry=null; G.berries++; G.score+=100; updScore(); berrySound(); caption('[Twinkle] A floating raspberry! 100 points.',1800); if(G.berries%3===2) say('clara-berry-1'); if(G.berries%3===1) say(pick(['razzle-berry-1','razzle-berry-2'])); } }
+    if(m.row>G.best){ G.best=m.row; G.score+=10; updScore(); }
+    if(under.o.kind==='ice'){ tone(1800,1400,0.06,0.04,'sine'); if(!G.saidIce){ G.saidIce=true; say('razzle-ice-1'); } else if(!G.saidIce2 && Math.random()<0.3){ G.saidIce2=true; say('clara-ice-1'); } } else { tone(160,120,0.06,0.07,'triangle'); if(Math.random()<0.05) say('clara-hop-1'); } }
+  else if(!whiskersSave()) splash(); }
+/* Whiskers to the rescue (Tina, 2026-11-18): once or twice a game (twice on Easy), when Razzle misses a log or ice,
+   Whiskers pops up under her and boosts her onto the nearest log in that row, or back to the bank. No splash, no try lost. */
+function whiskersSave(){ if(!G||G.saves<=0||G.over) return false; var m=G.me; G.saves--;
+  var best=null; for(var dx=0;dx<=3&&!best;dx++){ [m.x-dx,m.x+dx].forEach(function(x){ if(!best && x>=0 && x<=COLS-1){ var u=objAt(m.row,x); if(u && !(u.o.dip && sinking(u.o))) best={x:x,u:u}; } }); }
+  G.saveFx={x:m.x,row:m.row,t:1.4};
+  if(best){ m.x=best.x; m.on=best.u; } else { m.row=0; m.x=6; m.tx=6; m.tr=0; m.on=null; G.best=0; }
+  play('whiskers',0.7); tone(660,990,0.25,0.07,'triangle');
+  caption(best?'[A silver flash! Whiskers pops up and boosts Razzle onto a log. No splash!]':'[A silver flash! Whiskers carries Razzle safely back to the bank. No splash!]',3000);
+  say(Math.random()<0.5?'razzle-hop-2':'clara-hop-1');
+  return true; }
+function home(i){ var m=G.me; G.homes[i]=true; m.x=NOOKS[i]; G.score+=200; updScore(); chime(); caption('[A happy rustle of leaves] Razzle made it to the bush!',2200);
+  var done=G.homes.every(Boolean); if(!done) say(pick(['razzle-home-1','razzle-home-2']),true);
+  m.homeT=0.9; m.homeDone=done; }
+function levelDone(){ G.score+=500; updScore(); G.over=true;
+  if(LEVEL>=MAXL){ G.won=true; say('razzle-win-1',true); say('clara-win-1',true); play('woof',0.7); setTimeout(function(){ showEnd(true); },3500); return; }
+  say(LEVEL===1?'razzle-level-2':'razzle-level-1',true); say('clara-level-1',true); caption('[Bernie barks from the bank] All three gaps filled! On to level '+(LEVEL+1)+'.',3000); play('woof',0.7);
+  G.nextT=3; }
+function resetMe(){ var m=G.me; m.row=0; m.x=6; m.tx=6; m.tr=0; m.on=null; m.hop=0; m.splash=0; G.best=0; }
+function splash(){ var m=G.me; m.splash=1.0; m.on=null; G.lives--; updScore(); splashSound(); caption('[Splash!] Razzle fell in the river. '+(G.lives>0?G.lives+(G.lives===1?' try':' tries')+' left.':''),2200);
+  if(G.lives<=0){ G.over=true; say('razzle-lose-1',true); setTimeout(function(){ showEnd(false); },3200); return; }
+  say(Math.random()<0.45 ? pick(['clara-splash-1','clara-splash-2']) : pick(['razzle-splash-1','razzle-splash-2','razzle-splash-3']));
+  if(Math.random()<0.3){ setTimeout(function(){ play('woof',0.6); caption('[Bernie barks and wags from the bank]',1800); },900); } }
+function showEnd(won){ $('endTitle').textContent= won?'Razzle crossed every level!':'Good try!'; $('endScore').textContent='Score '+G.score+' · '+G.berries+(G.berries===1?' raspberry':' raspberries');
+  $('endNote').textContent= won?'Five levels of logs and ice. Razzle is sitting in the bush looking extremely pleased with herself, and Bernie is waiting to lick her.':'Razzle shakes the water off her leaves. Try Easy, or keep the hop helper on: green rings show where a hop is safe.';
+  var v=$('endVid'); v.pause(); v.hidden=true; $('endPic').hidden=true;   // win: Tina's video of Razzle in the bush (silent)
+  if(won){ v.hidden=false; var pv=v.play(); if(pv&&pv.catch) pv.catch(function(){ v.hidden=true; $('endPic').hidden=false; }); }
+  $('endOver').hidden=false; $('againBtn').focus(); }
+
+/* ---------- input ---------- */
+addEventListener('keydown',function(e){ if(!running) return; var k=e.key; if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].indexOf(k)>-1) e.preventDefault(); if(e.repeat) return;
+  if(k==='ArrowUp'||k==='w'||k===' ') hop(0,1); else if(k==='ArrowDown'||k==='s') hop(0,-1); else if(k==='ArrowLeft'||k==='a') hop(-1,0); else if(k==='ArrowRight'||k==='d') hop(1,0); else if(k==='p'||k==='Escape') togglePause(); });
+[['hopL',-1,0],['hopU',0,1],['hopD',0,-1],['hopR',1,0]].forEach(function(b){ $(b[0]).addEventListener('pointerdown',function(e){ e.preventDefault(); hop(b[1],b[2]); }); $(b[0]).addEventListener('keydown',function(e){ if(e.key===' '||e.key==='Enter'){ e.preventDefault(); e.stopPropagation(); if(!e.repeat) hop(b[1],b[2]); } }); });
+var cv=$('cv'), ctx=cv.getContext('2d'), W=800, H=600, DPR=1, CS=40, BX=0, BY=0;
+cv.addEventListener('pointerdown',function(e){ if(!running||!G) return; var r=cv.getBoundingClientRect(), px=e.clientX-r.left, py=e.clientY-r.top, c=cellXY(G.me.x,G.me.row), dx=px-(c.x+CS/2), dy=py-(c.y+CS/2);
+  if(Math.abs(dx)>Math.abs(dy)) hop(dx>0?1:-1,0); else hop(0,dy<0?1:-1); cv.focus(); });
+
+/* ---------- update ---------- */
+function update(dt){ G.t+=dt;
+  if(G.nextT>0){ G.nextT-=dt; if(G.nextT<=0){ LEVEL++; newLevel(true); return; } }
+  if(G.me.homeT>0){ G.me.homeT-=dt; if(G.me.homeT<=0){ if(G.me.homeDone) levelDone(); else resetMe(); } }
+  G.lanes.forEach(function(l){ l.objs.forEach(function(o){ o.x+=l.dir*l.sp*dt; }); });
+  var m=G.me;
+  if(m.splash>0){ m.splash-=dt; if(m.splash<=0 && !G.over) resetMe(); }
+  else if(m.homeT>0){}
+  else if(m.hop>0){ m.hop-=dt; if(m.hop<=0){ m.hop=0; land(); } }
+  else if(m.on && m.row>0 && m.row<=G.N){ var l=m.on.lane; m.x+=l.dir*l.sp*dt;
+    if(m.on.o.dip && dipped(m.on.o)){ caption('[Crack] The ice floe sank under Razzle!',2000); if(!whiskersSave()) splash(); }
+    else if(m.x<0||m.x>COLS-1){ m.x=Math.max(0,Math.min(COLS-1,m.x)); var u=objAt(m.row,m.x); if(u) m.on=u; else { caption('[Splash] The log drifted out of the river with Razzle on it.',2200); splash(); } } }
+  if(!G.over && m.row===0 && m.hop===0 && m.splash<=0){ G.idle+=dt; if(G.idle>14){ G.idle=-30; say('razzle-wait-1'); } }
+  // Whiskers swims by now and then, between the logs
+  var w=G.whisk; w.t-=dt; if(w.t<=0 && w.x<-1.5){ w.x=-1; w.row=rnd(1,G.N); w.t=18+Math.random()*16; play('whiskers',0.45); caption('[A splash and a happy chitter. Whiskers swims by.]',2200); }
+  if(w.x>-1.5){ w.x+=1.6*dt; if(w.x>COLS+1) w.x=-2; }
+  if(G.saveFx){ G.saveFx.t-=dt; if(G.saveFx.t<=0) G.saveFx=null; }
+  updThief(dt);
+  if(G.crow && !G.crowSaid && G.t>6){ G.crowSaid=true; play('caw',0.5); caption('[A crow caws from the far bank]',2000); say('razzle-crow-1'); }
+  if(!G.bernieSaid && G.t>40){ G.bernieSaid=true; say('razzle-bernie-1'); }
+  G.bernie.lick=Math.max(0,G.bernie.lick-dt); }
+
+/* ---------- the Chronal Crow takes a berry (from level 2, once a level) and says "Remember" (his line from S02E01) ---------- */
+function updThief(dt){ if(!G.crow||G.over) return;
+  var c=G.thief;
+  if(!c){ G.thiefT-=dt; if(G.thiefT>0||G.thiefDone) return;
+    var pick=null; G.lanes.forEach(function(l){ l.objs.forEach(function(o){ if(pick||o.berry==null||o.kind!=='log') return; var bx=wrapX(o,l)+o.berry; if(bx>1.5&&bx<COLS-2.5&&Math.abs(l.row-G.me.row)>0) pick={o:o,l:l}; }); });
+    if(!pick){ G.thiefT=3; return; }
+    G.thief={x:COLS-1,row:G.N+1+0.2,o:pick.o,l:pick.l,phase:'in',carry:false,flap:0}; play('caw',0.6); caption('[A crow with one silver tail feather lifts off from the far bank]',2400); return; }
+  c.flap+=dt;
+  if(c.phase==='in'){ if(c.o.berry==null){ c.phase='out'; return; } var tx=wrapX(c.o,c.l)+c.o.berry, tr=c.l.row, dx=tx-c.x, dr=tr-c.row, d=Math.hypot(dx,dr), sp=4.5*dt;
+    if(d<sp){ c.x=tx; c.row=tr; c.o.berry=null; c.carry=true; c.phase='out'; G.thiefDone=true; say('crow-remember-1',true); caption('The Chronal Crow takes the raspberry. "Remember, Clara Beaumont."',4200); }
+    else { c.x+=dx/d*sp; c.row+=dr/d*sp; c.ang=Math.atan2(dx,dr); } }
+  else { c.x+=5*dt; c.row+=3*dt; c.ang=Math.atan2(5,3); if(c.row>G.N+3||c.x>COLS+2) G.thief=null; } }
+function drawCrow(px,py,s,flap,carry,ang){ ctx.save(); ctx.translate(px,py); var w=Math.sin(flap*14)*0.5;
+  if(CROWok){ var im=(carry||!CROW0.naturalWidth)?CROW:CROW0, cw=s*1.6*(1-0.12*Math.abs(Math.sin(flap*9))), ch=s*1.6*im.height/im.width; ctx.rotate(ang||0); ctx.drawImage(im,-cw/2,-ch/2,cw,ch); ctx.restore(); return; }   // head points the way he flies; wings beat
+  else { ctx.fillStyle='#1a1a1e'; ctx.beginPath(); ctx.ellipse(0,0,s*0.26,s*0.16,0,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-s*0.05,0); ctx.lineTo(-s*0.5,-s*0.25*(1+w)); ctx.lineTo(-s*0.15,s*0.05); ctx.fill(); ctx.beginPath(); ctx.moveTo(s*0.05,0); ctx.lineTo(s*0.5,-s*0.25*(1+w)); ctx.lineTo(s*0.15,s*0.05); ctx.fill();
+    ctx.beginPath(); ctx.arc(-s*0.24,-s*0.06,s*0.12,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#c8d4dc'; ctx.fillRect(s*0.22,-s*0.02,s*0.22,s*0.05);
+    ctx.fillStyle='#e8b86a'; ctx.beginPath(); ctx.moveTo(-s*0.34,-s*0.08); ctx.lineTo(-s*0.48,-s*0.04); ctx.lineTo(-s*0.34,-s*0.01); ctx.fill(); }
+  if(carry){ ctx.fillStyle='#d8344a'; ctx.beginPath(); ctx.arc(-s*0.5,s*0.02,s*0.11,0,Math.PI*2); ctx.fill(); }
+  ctx.restore(); }
+function drawWhiskersSave(){ var f=G.saveFx; if(!f) return; var p=cellXY(f.x,f.row), a=Math.min(1,f.t/0.4), up=Math.sin(Math.min(1,(1.4-f.t)/0.5)*Math.PI/2);
+  ctx.save(); ctx.globalAlpha=a; ctx.translate(p.x+CS/2,p.y+CS/2);
+  ctx.strokeStyle='rgba(220,240,255,.9)'; ctx.lineWidth=3; for(var i=0;i<3;i++){ ctx.beginPath(); ctx.arc(0,0,CS*(0.35+i*0.18+(1.4-f.t)*0.2),0,Math.PI*2); ctx.stroke(); }
+  if(WHok){ var ww=CS*1.6*up, wh=ww*WH.height/WH.width; if(ww>2) ctx.drawImage(WH,-ww/2,-wh*0.78,ww,wh); }   // Tina's Whiskers rising from the water
+  else { ctx.scale(up,up); var g=ctx.createLinearGradient(-CS*0.5,0,CS*0.5,0); g.addColorStop(0,'#b8c4d2'); g.addColorStop(0.5,'#e4ecf4'); g.addColorStop(1,'#c2b8d8'); ctx.fillStyle=g;   // silver with a soft shimmer
+    ctx.beginPath(); ctx.ellipse(0,0,CS*0.45,CS*0.22,0,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(CS*0.42,-CS*0.04,CS*0.17,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#1a1d22'; ctx.beginPath(); ctx.arc(CS*0.48,-CS*0.08,CS*0.03,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(CS*0.58,-CS*0.02,CS*0.035,0,Math.PI*2); ctx.fill(); }
+  ctx.restore(); }
+
+/* ---------- drawing ---------- */
+function resize(){ var r=$('stage').getBoundingClientRect(); DPR=Math.min(devicePixelRatio||1,2); W=Math.max(320,r.width); H=Math.max(300,r.height); cv.width=W*DPR; cv.height=H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0);
+  var rows=(G?G.N:5)+2, sc=parseFloat(S.size)||1, topRoom=Math.min(H*0.12, 58*sc), bottomRoom=Math.min(H*0.24, 104*sc);   // room for Razzle's words above and captions below
+  CS=Math.floor(Math.min((W-16)/COLS,(H-topRoom-bottomRoom)/rows)); BX=Math.round((W-CS*COLS)/2); BY=Math.round(topRoom+(H-topRoom-bottomRoom-CS*rows)/2); if(G) draw(); }
+addEventListener('resize',resize);
+function cellXY(x,row){ return {x:BX+x*CS, y:BY+(G.N+1-row)*CS}; }
+function rr(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+var WH=new Image(), WHok=false; WH.onload=function(){ WHok=true; }; WH.src='art/whiskers.png'; var CROW=new Image(), CROWok=false; CROW.onload=function(){ CROWok=true; }; CROW.src='art/crow.png'; var CROW0=new Image(); CROW0.src='art/crow-empty.png';   // Tina's Chronal Crow, with and without the raspberry
+var ICE=new Image(), ICEok=false; ICE.onload=function(){ ICEok=true; }; ICE.src='art/ice.png'; var ICE2=new Image(); ICE2.src='art/ice-2.png';   // Tina's painted ice floe (2026-11-18)
+var LOG=new Image(), LOGok=false; LOG.onload=function(){ LOGok=true; }; LOG.src='art/log.png';   // Tina's painted log (2026-11-18)
+var RZ=new Image(), RZok=false; RZ.onload=function(){ RZok=true; }; RZ.src='art/razzle.png';   // Tina's painted Razzle (2026-11-18), cut out of her snow picture
+function drawRazzle(cx,cy,s,face,wet){ // a round raspberry with a leafy crown, big eyes and white sneakers
+  if(RZok){ ctx.save(); ctx.translate(cx,cy); ctx.fillStyle='rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(0,s*0.46,s*0.34,s*0.09,0,0,Math.PI*2); ctx.fill();
+    var w=s*1.05, h=w*RZ.height/RZ.width; if(face<0) ctx.scale(-1,1); ctx.drawImage(RZ,-w/2,-h*0.55,w,h);
+    if(wet){ ctx.fillStyle='rgba(180,220,255,.8)'; for(var j=0;j<4;j++){ ctx.beginPath(); ctx.arc((j-1.5)*s*0.18,-h*0.55-j%2*s*0.06,s*0.04,0,Math.PI*2); ctx.fill(); } }
+    ctx.restore(); return; }
+  ctx.save(); ctx.translate(cx,cy);
+  ctx.fillStyle='rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(0,s*0.42,s*0.36,s*0.1,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#f2f2f2'; rr(-s*0.3,s*0.28,s*0.22,s*0.12,s*0.05); ctx.fill(); rr(s*0.08,s*0.28,s*0.22,s*0.12,s*0.05); ctx.fill();
+  ctx.fillStyle='#a8222f'; ctx.beginPath(); ctx.arc(0,0,s*0.36,0,Math.PI*2); ctx.fill();
+  for(var i=0;i<26;i++){ var a=i*2.4, rr2=s*(0.08+0.24*((i*37)%11)/11); ctx.fillStyle=i%3?'#c8303d':'#e0566a'; ctx.beginPath(); ctx.arc(Math.cos(a)*rr2,Math.sin(a)*rr2*0.95,s*0.075,0,Math.PI*2); ctx.fill(); }
+  ctx.fillStyle='#4a9a4a'; for(var k=0;k<5;k++){ var a2=-Math.PI/2+(k-2)*0.45; ctx.beginPath(); ctx.ellipse(Math.cos(a2)*s*0.3,Math.sin(a2)*s*0.3-s*0.06,s*0.15,s*0.06,a2,0,Math.PI*2); ctx.fill(); }
+  [-1,1].forEach(function(k2){ ctx.fillStyle='#fbf6ee'; ctx.beginPath(); ctx.arc(k2*s*0.12+face*s*0.04,-s*0.02,s*0.09,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#1d1a18'; ctx.beginPath(); ctx.arc(k2*s*0.12+face*s*0.07,-s*0.01,s*0.045,0,Math.PI*2); ctx.fill(); });
+  ctx.strokeStyle='#5a1218'; ctx.lineWidth=Math.max(1.5,s*0.03); ctx.beginPath(); ctx.arc(face*s*0.03,s*0.1,s*0.07,0.15*Math.PI,0.85*Math.PI); ctx.stroke();
+  if(wet){ ctx.fillStyle='rgba(180,220,255,.8)'; for(var j=0;j<4;j++){ ctx.beginPath(); ctx.arc((j-1.5)*s*0.18,-s*0.42-j%2*s*0.06,s*0.04,0,Math.PI*2); ctx.fill(); } }
+  ctx.restore(); }
+function drawBernie(x,y,s){ ctx.save(); ctx.translate(x,y); ctx.fillStyle='#f6f4f0'; ctx.beginPath(); ctx.ellipse(0,0,s*0.5,s*0.32,0,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(0,-s*0.34,s*0.24,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#e8e2da'; ctx.beginPath(); ctx.ellipse(-s*0.2,-s*0.42,s*0.08,s*0.14,-0.5,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.ellipse(s*0.2,-s*0.42,s*0.08,s*0.14,0.5,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#2a2222'; ctx.beginPath(); ctx.arc(-s*0.08,-s*0.38,s*0.03,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(s*0.08,-s*0.38,s*0.03,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(0,-s*0.27,s*0.05,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#d9a23a'; ctx.beginPath(); ctx.arc(0,-s*0.12,s*0.04,0,Math.PI*2); ctx.fill();
+  var wag=Math.sin(performance.now()/130)*0.6; ctx.strokeStyle='#f6f4f0'; ctx.lineWidth=s*0.16; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(0,s*0.26); ctx.lineTo(Math.sin(wag)*s*0.22,s*0.46); ctx.stroke(); ctx.restore(); }
+function draw(){
+  if(!G) return; ctx.setTransform(DPR,0,0,DPR,0,0);
+  ctx.fillStyle='#d8d2e4'; ctx.fillRect(0,0,W,H);
+  var N=G.N, t=G.t;
+  // the far bank with the raspberry bush, and the near bank
+  var top=cellXY(0,N+1), bot=cellXY(0,0);
+  ctx.fillStyle='#e9e5f0'; ctx.fillRect(BX,top.y,CS*COLS,CS); ctx.fillRect(BX,bot.y,CS*COLS,CS);
+  // the bush runs along the far bank, with three gaps
+  for(var c=0;c<COLS;c++){ var cx=BX+c*CS, cy=top.y; var gap=NOOKS.indexOf(c);
+    if(gap>=0){ ctx.fillStyle='#3a5a3a'; rr(cx+3,cy+3,CS-6,CS-6,CS*0.3); ctx.fill(); ctx.strokeStyle='#f5cf85'; ctx.lineWidth=3; ctx.setLineDash([5,4]); ctx.stroke(); ctx.setLineDash([]);
+      if(G.homes[gap]) drawRazzle(cx+CS/2,cy+CS/2,CS*0.8,0,false); continue; }
+    ctx.fillStyle='#2f6a3a'; ctx.beginPath(); ctx.arc(cx+CS*0.5,cy+CS*0.55,CS*0.55,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#3f8a4a'; ctx.beginPath(); ctx.arc(cx+CS*0.35,cy+CS*0.4,CS*0.3,0,Math.PI*2); ctx.fill();
+    for(var b=0;b<3;b++){ ctx.fillStyle='#d8344a'; ctx.beginPath(); ctx.arc(cx+CS*(0.25+0.25*b),cy+CS*(0.35+0.2*((b+c)%2)),CS*0.08,0,Math.PI*2); ctx.fill(); } }
+  // the water
+  var wy=cellXY(0,N).y; var wg=ctx.createLinearGradient(0,wy,0,wy+CS*N); wg.addColorStop(0,'#2f5a74'); wg.addColorStop(1,'#3a6a86'); ctx.fillStyle=wg; ctx.fillRect(BX,wy,CS*COLS,CS*N);
+  G.lanes.forEach(function(l){ var y=cellXY(0,l.row).y; ctx.strokeStyle='rgba(200,230,245,.28)'; ctx.lineWidth=2; for(var k=0;k<5;k++){ var x=BX+((k*CS*2.7+l.dir*t*l.sp*CS*0.6)%(CS*COLS)+CS*COLS)%(CS*COLS); ctx.beginPath(); ctx.moveTo(x,y+CS*(0.3+0.4*(k%2))); ctx.quadraticCurveTo(x+CS*0.3,y+CS*(0.2+0.4*(k%2)),x+CS*0.6,y+CS*(0.3+0.4*(k%2))); ctx.stroke(); } });
+  // Whiskers swimming
+  var w=G.whisk; if(w.x>-1.5){ var wp=cellXY(w.x,w.row); ctx.fillStyle='#c9d2dc'; ctx.beginPath(); ctx.ellipse(wp.x+CS/2,wp.y+CS/2,CS*0.32,CS*0.16,0,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(wp.x+CS*0.85,wp.y+CS*0.45,CS*0.13,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#1a1d22'; ctx.beginPath(); ctx.arc(wp.x+CS*0.9,wp.y+CS*0.42,CS*0.025,0,Math.PI*2); ctx.fill(); ctx.strokeStyle='rgba(220,240,255,.6)'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(wp.x,wp.y+CS*0.5); ctx.lineTo(wp.x-CS*0.5,wp.y+CS*0.35); ctx.moveTo(wp.x,wp.y+CS*0.5); ctx.lineTo(wp.x-CS*0.5,wp.y+CS*0.65); ctx.stroke(); }
+  // logs and ice
+  ctx.save(); ctx.beginPath(); ctx.rect(BX,wy,CS*COLS,CS*N); ctx.clip();
+  G.lanes.forEach(function(l){ var y=cellXY(0,l.row).y; l.objs.forEach(function(o){ for(var k=-1;k<=1;k++){ var x0=BX+(wrapX(o,l)+k*l.span)*CS; if(x0>BX+CS*COLS||x0+o.len*CS<BX) continue;
+    if(o.kind==='log'){ if(LOGok){ ctx.save(); rr(x0+2,y+CS*0.1,o.len*CS-4,CS*0.8,CS*0.3); ctx.clip(); ctx.drawImage(LOG,x0+2,y+CS*0.1,o.len*CS-4,CS*0.8); ctx.restore(); }   // Tina's painted log
+      else { ctx.fillStyle='#6a4428'; rr(x0+2,y+CS*0.14,o.len*CS-4,CS*0.72,CS*0.3); ctx.fill(); ctx.fillStyle='#8a5a32'; rr(x0+4,y+CS*0.18,o.len*CS-8,CS*0.3,CS*0.15); ctx.fill();
+      ctx.fillStyle='#f0ecf4'; rr(x0+CS*0.3,y+CS*0.16,o.len*CS*0.5,CS*0.12,CS*0.06); ctx.fill(); }
+      ctx.fillStyle='#c8a070'; ctx.beginPath(); ctx.ellipse(x0+o.len*CS-CS*0.14,y+CS*0.5,CS*0.1,CS*0.32,0,0,Math.PI*2); ctx.fill(); ctx.strokeStyle='#8a6a48'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.ellipse(x0+o.len*CS-CS*0.14,y+CS*0.5,CS*0.05,CS*0.18,0,0,Math.PI*2); ctx.stroke();
+      if(o.berry!=null){ var bx=x0+(o.berry+0.5)*CS, by=y+CS*0.5; ctx.fillStyle='#d8344a'; ctx.beginPath(); ctx.arc(bx,by,CS*0.17,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#f27a8a'; ctx.beginPath(); ctx.arc(bx-CS*0.05,by-CS*0.05,CS*0.05,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#4a9a4a'; ctx.beginPath(); ctx.ellipse(bx,by-CS*0.17,CS*0.1,CS*0.04,0,0,Math.PI*2); ctx.fill(); } }
+    else { var sinkA = o.dip ? (dipped(o)?0.15: sinking(o)?0.55:1) : 1; ctx.globalAlpha=sinkA; for(var q=0;q<o.len;q++){ if(ICEok){ ctx.save(); ctx.translate(x0+q*CS+CS/2,y+CS/2); ctx.rotate(((q+Math.round(o.ph*4))%4)*Math.PI/2); var ip=((q+Math.round(o.ph*7))%2 && ICE2.complete && ICE2.naturalWidth) ? ICE2 : ICE; ctx.drawImage(ip,-CS*0.47,-CS*0.45,CS*0.94,CS*0.9); ctx.restore(); continue; } ctx.fillStyle='#e8f2fa'; rr(x0+q*CS+3,y+CS*0.1,CS-6,CS*0.8,CS*0.18); ctx.fill(); ctx.strokeStyle='#9ec3e6'; ctx.lineWidth=2; ctx.stroke(); ctx.strokeStyle='rgba(120,160,200,.5)'; ctx.beginPath(); ctx.moveTo(x0+q*CS+CS*0.3,y+CS*0.3); ctx.lineTo(x0+q*CS+CS*0.55,y+CS*0.55); ctx.stroke(); } ctx.globalAlpha=1;
+      if(o.dip && sinking(o)){ ctx.fillStyle='#1a1816'; ctx.font='700 '+Math.round(CS*0.32)+'px Atkinson Hyperlegible, sans-serif'; ctx.fillText('!',x0+o.len*CS/2-CS*0.05,y+CS*0.62); } } } }); });
+  ctx.restore();
+  drawWhiskersSave();
+  // Bernie on the near bank, the crow on the far bank
+  var bp=cellXY(0.6,0); drawBernie(bp.x+CS/2,bp.y+CS*0.62,CS*0.9);
+  if(G.crow && !G.thief && !G.thiefDone){ var cp=cellXY(COLS-1,N+1); ctx.fillStyle='#1a1a1e'; ctx.beginPath(); ctx.ellipse(cp.x+CS*0.5,cp.y+CS*0.55,CS*0.22,CS*0.15,0,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(cp.x+CS*0.3,cp.y+CS*0.42,CS*0.11,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#c8d4dc'; ctx.fillRect(cp.x+CS*0.62,cp.y+CS*0.52,CS*0.18,CS*0.04); ctx.fillStyle='#e8b86a'; ctx.beginPath(); ctx.moveTo(cp.x+CS*0.2,cp.y+CS*0.42); ctx.lineTo(cp.x+CS*0.08,cp.y+CS*0.45); ctx.lineTo(cp.x+CS*0.2,cp.y+CS*0.47); ctx.fill(); }
+  // hop helper: green rings where a hop is safe right now
+  var m=G.me;
+  if(S.guide==='on' && running && !G.over && m.hop===0 && m.splash<=0){ [[0,1],[-1,0],[1,0],[0,-1]].forEach(function(d){ var nr=m.row+d[1], nc= d[0]===0 ? m.x : Math.round(m.x)+d[0]; if(nr<0||nr>G.N+1||nc<0||nc>COLS-1) return;
+      var safe = nr===0 || (nr===G.N+1 ? NOOKS.some(function(cn,i){ return !G.homes[i] && Math.abs(cn-nc)<=(S.diff==='easy'?99:S.diff==='medium'?2.2:1.2); }) : !!objAt(nr,nc));
+      if(!safe) return; var p=cellXY(nc,nr); ctx.strokeStyle='#7ae08a'; ctx.lineWidth=4; ctx.beginPath(); ctx.arc(p.x+CS/2,p.y+CS/2,CS*0.36,0,Math.PI*2); ctx.stroke(); }); }
+  // Razzle
+  var rx,ry,lift=0; if(m.hop>0){ var k2=1-m.hop/0.18; var a=cellXY(m.fx,m.fr), b2=cellXY(m.tx,m.tr); rx=a.x+(b2.x-a.x)*k2; ry=a.y+(b2.y-a.y)*k2; lift=Math.sin(k2*Math.PI)*CS*0.35; } else { var p2=cellXY(m.x,m.row); rx=p2.x; ry=p2.y; }
+  if(m.splash>0){ ctx.strokeStyle='rgba(220,240,255,'+m.splash+')'; ctx.lineWidth=3; for(var i=0;i<3;i++){ ctx.beginPath(); ctx.arc(rx+CS/2,ry+CS/2,CS*(0.2+(1-m.splash)*0.6+i*0.15),0,Math.PI*2); ctx.stroke(); } }
+  else drawRazzle(rx+CS/2,ry+CS/2-lift,CS*0.82*(1+lift/CS*0.3),m.face,false);
+  if(G.thief){ var tp=cellXY(G.thief.x,G.thief.row); drawCrow(tp.x+CS/2,tp.y+CS/2-CS*0.3,CS*1.7,G.thief.flap,G.thief.carry,G.thief.ang); }
+}
+function frame(ts){ if(!running) return; var dt=Math.max(0,Math.min(0.05,(ts-last)/1000||0)); last=ts; if(!paused && G) update(dt); draw(); requestAnimationFrame(frame); }
+function start(){ $('endVid').pause(); hush(); LEVEL=+S.lvl||1; newLevel(false); $('startOver').hidden=true; $('endOver').hidden=true; paused=false; $('pauseBtn').setAttribute('aria-pressed','false'); $('pauseBtn').textContent='Pause';
+  if(S.music==='on') safePlay(music); if(S.sfx==='on') safePlay(river); caption('[The river rushes past, cold and fast]',2400);
+  say(G&&!window.__played?'razzle-start-1':'razzle-start-2',true); say('clara-start-1',true); window.__played=true;
+  if(!running){ running=true; last=performance.now(); requestAnimationFrame(frame); } cv.focus(); }
+function togglePause(){ if(!running) return; paused=!paused; $('pauseBtn').setAttribute('aria-pressed',paused?'true':'false'); $('pauseBtn').textContent=paused?'Paused':'Pause';
+  if(paused){ music.pause(); river.pause(); if(talkV) talkV.pause(); caption('Paused. Press Pause again to keep playing.',3000); } else { if(S.music==='on') safePlay(music); if(S.sfx==='on') safePlay(river); if(talkV) safePlay(talkV); } }
+$('startBtn').addEventListener('click',start); $('againBtn').addEventListener('click',start);
+$('menuBtn').addEventListener('click',function(){ $('endOver').hidden=true; $('startOver').hidden=false; });
+$('pauseBtn').addEventListener('click',togglePause);
+$('setBtn').addEventListener('click',function(){ if(running&&!paused) togglePause(); $('setOver').hidden=false; $('setDone').focus(); });
+$('setDone').addEventListener('click',function(){ $('setOver').hidden=true; });
+
+/* testing helpers */
+window.rvG=function(){ return G; };
+window.rvStep=function(n){ for(var i=0;i<(n||1);i++) update(1/60); draw(); return {level:LEVEL,row:G.me.row,x:+G.me.x.toFixed(2),lives:G.lives,homes:G.homes.join(','),score:G.score,over:G.over}; };
+window.rvHop=hop;
+window.rvThief=function(){ G.crow=true; G.thiefT=0; G.thiefDone=false; return 'ok'; };
+window.rvSave=function(){ return G.saves; };
+window.rvSafe=function(dx,dy){ var m=G.me, nr=m.row+dy, nc= dx===0 ? m.x : Math.round(m.x)+dx; if(nr===0) return true; if(nr===G.N+1) return true; return !!objAt(nr,nc); };
+
+LEVEL=+S.lvl||1; newLevel(false); apply(); resize();
+})();
+</script>
+<script>/* SMALL-SCREEN start (tools/small_screen.py): Hide panels, Box size, Speech boxes */
+(function(){
+  var r=document.documentElement, P='rv-';
+  function g(k){ try{ return localStorage.getItem(P+k); }catch(e){ return null; } }
+  function s(k,v){ try{ localStorage.setItem(P+k,v); }catch(e){} }
+  var small=(innerWidth<760 || innerHeight<560);
+  var st={ panels:g('panels')||(small?'folded':'open'), box:g('box')||(small?'s':'m'), words:g('wordsbox')||'on' };
+  var bar=document.querySelector('.bar'), btn=document.createElement('button'); btn.id='panelsBtn'; btn.type='button';
+  bar.insertBefore(btn, bar.firstChild);
+  btn.addEventListener('click',function(){ st.panels= st.panels==='folded'?'open':'folded'; s('panels',st.panels); apply(); btn.blur(); });
+  var rows=[['panels','Panels (top bar and buttons)',[['open','Full size'],['folded','Folded small']]],
+            ['box','Speech box size',[['s','Small'],['m','Medium'],['l','Large']]]];
+  if(true) rows.push(['words','Speech boxes',[['on','Show the words'],['off','Voice only']]]);
+  var done=document.getElementById('setDone').closest('.row');
+  rows.forEach(function(row){ var d=document.createElement('div'); d.className='set';
+    d.innerHTML='<b>'+row[1]+'</b><div class="seg" data-k2="'+row[0]+'">'+row[2].map(function(o){ return '<button type="button" data-v2="'+o[0]+'">'+o[1]+'</button>'; }).join('')+'</div>';
+    done.parentNode.insertBefore(d,done);
+    d.querySelector('.seg').addEventListener('click',function(e){ var b=e.target.closest('button'); if(!b) return; st[row[0]]=b.dataset.v2; s(row[0]==='words'?'wordsbox':row[0],b.dataset.v2); apply(); }); });
+  function apply(){
+    r.classList.toggle('compact', st.panels==='folded'); r.setAttribute('data-box',st.box); r.classList.toggle('nobox', st.words==='off');
+    btn.textContent= st.panels==='folded' ? 'Show panels' : 'Hide panels'; btn.setAttribute('aria-expanded', st.panels==='folded'?'false':'true');
+    document.querySelectorAll('.seg[data-k2]').forEach(function(seg){ seg.querySelectorAll('button').forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.v2===st[seg.dataset.k2]?'true':'false'); }); });
+    setTimeout(function(){ dispatchEvent(new Event('resize')); },30);
+  }
+  apply();
+})();
+/* SMALL-SCREEN end */</script>

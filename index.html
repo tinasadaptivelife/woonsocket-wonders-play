@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Woonsocket Wonders Games</title>
+<link rel="icon" href="tools/app-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Fraunces:opsz,wght@9..144,700&display=swap" rel="stylesheet">
+<style>
+/* Menu for the Desktop app. Dark soft first; the Look and text size are remembered. */
+:root { --page:#2b2b2b; --panel:#363636; --well:#2f2f2f; --ink:#ece6da; --muted:#d6cfc2; --line:#8a8070; --chip:#3f3a33; --focus:#f5cf85; --title:'Fraunces', Georgia, serif; --scale:1; color-scheme: dark; }
+:root[data-look="sand"] { --page:#d6ccb5; --panel:#e4dac4; --well:#cbbfa4; --ink:#111111; --muted:#2e2822; --line:#4a4038; --chip:#cbbfa4; --focus:#1f4a30; color-scheme: light; }
+:root[data-look="light"] { --page:#e9e2d2; --panel:#f1ebdd; --well:#ddd4c0; --ink:#111111; --muted:#2e2822; --line:#4a4038; --chip:#ddd4c0; --focus:#1f4a30; color-scheme: light; }
+:root[data-look="contrast"] { --page:#c9c9c9; --panel:#d9d9d9; --well:#bdbdbd; --ink:#000; --muted:#111; --line:#000; --chip:#bdbdbd; --focus:#000; color-scheme: light; }
+* { box-sizing:border-box; }
+html { font-size:calc(20px * var(--scale)); }
+body { margin:0; background:var(--page); color:var(--ink); font-family:'Atkinson Hyperlegible', system-ui, sans-serif; line-height:1.5; }
+main { max-width:1180px; margin:0 auto; padding:24px 16px 48px; }
+h1 { font:700 2.1rem/1.15 var(--title); margin:0 0 6px; }
+.lead { margin:0 0 22px; font-size:1.1rem; color:var(--muted); }
+.controls { display:flex; flex-wrap:wrap; gap:14px 24px; margin:0 0 26px; padding:14px 16px; background:var(--panel); border:3px solid var(--line); border-radius:16px; }
+.set { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.set b { font-size:1rem; }
+.seg { display:flex; flex-wrap:wrap; gap:6px; }
+button { font:inherit; font-size:1rem; font-weight:700; color:var(--ink); background:var(--well); border:3px solid var(--line); border-radius:12px; padding:6px 14px; cursor:pointer; min-height:44px; }
+button[aria-pressed="true"] { background:var(--chip); outline:3px solid var(--ink); outline-offset:-6px; }
+button:focus-visible, a:focus-visible { outline:4px solid var(--focus); outline-offset:3px; }
+.games { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap:22px; }
+.game { display:flex; flex-direction:column; background:var(--panel); border:3px solid var(--line); border-radius:18px; overflow:hidden; color:var(--ink); text-decoration:none; }
+a.game:hover { border-color:var(--ink); }
+.game img { width:100%; aspect-ratio:16/9; object-fit:cover; display:block; border-bottom:3px solid var(--line); background:var(--well); }
+.game .body { padding:14px 18px 18px; display:flex; flex-direction:column; gap:8px; flex:1; }
+.game h2 { font:700 1.35rem/1.2 var(--title); margin:0; }
+.game p { margin:0; }
+.chip { align-self:flex-start; margin-top:auto; font-weight:700; font-size:1rem; background:var(--chip); border:2px solid var(--line); border-radius:999px; padding:4px 14px; }
+.soon { opacity:.85; }
+.soon .ph { width:100%; aspect-ratio:16/9; display:grid; place-items:center; border-bottom:3px solid var(--line); background:var(--well); font-size:1.1rem; }
+footer { margin-top:30px; color:var(--muted); font-size:1rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Woonsocket Wonders Games</h1>
+  <p class="lead">Snowy days in 1979 with Clara, Bernie and the family. Pick a game.</p>
+
+  <div class="controls" aria-label="Page settings">
+    <div class="set"><b>Look</b><div class="seg" data-key="look">
+      <button data-v="dark">Dark soft</button><button data-v="sand">Dim sand</button><button data-v="light">Light</button><button data-v="contrast">Extra contrast</button>
+    </div></div>
+    <div class="set"><b>Text size</b><div class="seg" data-key="size">
+      <button data-v="1">Big</button><button data-v="1.15">Bigger</button><button data-v="1.3">Biggest</button>
+    </div></div>
+  </div>
+
+  <div class="games">
+    <a class="game" href="sledding/">
+      <img src="sledding/art/river-hill-top.jpg" alt="Clara with Bernie at the top of River Hill, her sled beside them in the snow">
+      <div class="body">
+        <h2>Sledding on River Hill</h2>
+        <p>Slide down to the Blackstone River with Bernie running beside you.</p>
+        <span class="chip">Play</span>
+      </div>
+    </a>
+    <a class="game" href="tv-games/">
+      <img src="tv-games/art/parlor-tv.jpg" alt="A cozy parlor at night with a glowing wooden console TV">
+      <div class="body">
+        <h2>Games on the Parlor TV</h2>
+        <p>Five games on the family's new TV: Paddle Ball, Mill Bricks, Snowflake Storm, Franky's Candy Maze and Whiskers Pinball. Easy, Medium or Hard, 5 levels each.</p>
+        <span class="chip">Play</span>
+      </div>
+    </a>
+    <a class="game" href="basketball/">
+      <img src="basketball/art/backyard-start.jpg" alt="The snowy backyard at dusk with the porch light on, the hoop, the rabbit hutch and Bernie's dog house">
+      <div class="body">
+        <h2>Backyard Basketball</h2>
+        <p>Nine o'clock basketball with Uncle Joe. First to 7 baskets.</p>
+        <span class="chip">Play</span>
+      </div>
+    </a>
+    <a class="game" href="marbles/">
+      <img src="marbles/art/marbles-start.jpg" alt="Glass marbles inside a chalk circle on the parlor floorboards, with a braided rug and a bowl of popcorn">
+      <div class="body">
+        <h2>Marbles with Dad</h2>
+        <p>"Best floor in the house for marbles." Knock 7 marbles out of the chalk ring before Dad does.</p>
+        <span class="chip">Play</span>
+      </div>
+    </a>
+    <a class="game" href="igloo/">
+      <img src="igloo/art/backyard.jpg" alt="Tina's painting of the snowy backyard at dusk with the porch light on">
+      <div class="body">
+        <h2>Igloo and Snowball Fight</h2>
+        <p>Build an igloo block by block with Dad and Uncle Joe, then a snowball fight: Clara and Bernie against the grown-ups.</p>
+        <span class="chip">Play</span>
+      </div>
+    </a>
+    <a class="game" href="river/">
+      <img src="river/art/river-crossing.jpg" alt="Tina's painting of the frozen Blackstone River with logs and ice in the water">
+      <div class="body">
+        <h2>Razzle's River Crossing</h2>
+        <p>Hop Razzle across the Blackstone on logs and ice to the raspberry bush. 5 levels, Easy to Hard.</p>
+        <span class="chip">Play</span>
+      </div>
+    </a>
+  </div>
+
+  <footer>Voices are AI-generated. Art from Tina's Google Flow pictures.</footer>
+</main>
+<script>
+(function(){
+  'use strict';
+  function lget(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+  function lset(k,v){ try { localStorage.setItem(k,v); } catch(e){} }
+  var root=document.documentElement;
+  var S={ look:lget('ww-menu-look')||'dark', size:lget('ww-menu-size')||'1' };
+  function apply(){
+    if(S.look==='dark') root.removeAttribute('data-look'); else root.setAttribute('data-look',S.look);
+    root.style.setProperty('--scale',S.size);
+    document.querySelectorAll('.seg[data-key]').forEach(function(seg){
+      seg.querySelectorAll('button').forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.v===S[seg.dataset.key]?'true':'false'); });
+    });
+  }
+  document.querySelectorAll('.seg[data-key]').forEach(function(seg){
+    seg.addEventListener('click',function(e){ var b=e.target.closest('button'); if(!b) return; S[seg.dataset.key]=b.dataset.v; lset('ww-menu-'+seg.dataset.key,b.dataset.v); apply(); });
+  });
+  apply();
+})();
+</script>
+</body>
+</html>

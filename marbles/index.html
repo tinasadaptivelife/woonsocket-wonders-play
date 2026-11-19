@@ -1,0 +1,681 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Marbles with Dad</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Playfair+Display:wght@700&display=swap">
+<style>
+/* Layout: one-screen game. Big control bar on top; the Beaumont parlor floor seen from above, a chalk ring of marbles in the middle, Dad's words in a box with his picture. */
+:root {
+  --page:#2b2b2b; --panel:#363636; --well:#242424; --ink:#ece6da; --muted:#cfc6b6; --line:#8a8070;
+  --holly:#a8d8b4; --holly-tint:#2f4a3a; --lamp:#f5cf85; --lamp-tint:#4a3f2b; --dad:#f0c0a0; --scrim:#1a1816; --cap:#f6eedc; --focus:#f5cf85;
+  --read:"Atkinson Hyperlegible","Segoe UI",Verdana,sans-serif; --title:"Playfair Display",Georgia,serif;
+  --scale:1; color-scheme: dark;
+}
+:root[data-look="sand"] { --page:#d6ccb5; --panel:#e4dac4; --well:#cbbfa4; --ink:#111111; --muted:#3a332b; --line:#4a4038; --holly:#1f4a30; --holly-tint:#cfe0cc; --lamp:#6b4510; --lamp-tint:#f3ddae; --dad:#6a2c12; --focus:#1f4a30; color-scheme: light; }
+:root[data-look="light"] { --page:#e9e2d2; --panel:#f1ebdd; --well:#ddd4c0; --ink:#111111; --muted:#3a332b; --line:#4a4038; --holly:#1f4a30; --holly-tint:#cfe0cc; --lamp:#6b4510; --lamp-tint:#f3ddae; --dad:#6a2c12; --focus:#1f4a30; color-scheme: light; }
+:root[data-look="contrast"] { --page:#c9c9c9; --panel:#d9d9d9; --well:#bdbdbd; --ink:#000; --muted:#1a1a1a; --line:#000; --holly:#0e3320; --holly-tint:#b8d4bc; --lamp:#4a2e00; --lamp-tint:#e9cf92; --dad:#4a1a06; --focus:#000; color-scheme: light; }
+html, body { height:100%; }
+html { font-size: calc(20px * var(--scale)); }
+body { margin:0; background:var(--page); color:var(--ink); font:400 1rem/1.5 var(--read); overflow:hidden; }
+body::before { content:""; position:fixed; inset:0 0 auto; height:env(safe-area-inset-top,0px); z-index:10; background:var(--panel); }
+.app { height:100%; display:grid; grid-template-rows:auto 1fr auto; }
+.bar { background:var(--panel); border-bottom:3px solid var(--line); padding-block:8px; padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center; }
+.home { font-weight:700; font-size:1.05rem; color:var(--ink); background:var(--well); border:3px solid var(--line); border-radius:12px; padding:6px 12px; text-decoration:none; }
+.home:focus-visible { outline:4px solid var(--focus); outline-offset:2px; }
+.bar h1 { margin:0 auto 0 0; font:700 1.3rem/1.1 var(--title); color:var(--holly); }
+.score { font-weight:700; font-size:1.1rem; font-variant-numeric:tabular-nums; }
+button { font:700 0.9rem/1.2 var(--read); color:var(--ink); background:var(--well); border:3px solid var(--line); border-radius:12px; min-height:52px; min-width:52px; padding:0 16px; cursor:pointer; touch-action:none; }
+button.primary { background:var(--holly-tint); border-color:var(--holly); }
+button[aria-pressed="true"] { background:var(--holly-tint); border-color:var(--holly); }
+button[aria-pressed="true"]::before { content:"\2713  "; }
+button:focus-visible { outline:3px solid var(--focus); outline-offset:3px; }
+.stage { position:relative; min-height:0; }
+canvas { display:block; width:100%; height:100%; touch-action:none; }
+.dad { position:absolute; top:14px; left:max(14px,env(safe-area-inset-left,0px)); max-width:min(600px,calc(100% - 28px)); background:var(--panel); border:3px solid var(--line); border-radius:16px; padding:12px 18px 12px 12px; display:flex; gap:14px; align-items:center; }
+.dad[hidden] { display:none; }
+.dad img { width:84px; height:84px; border-radius:12px; border:3px solid var(--line); object-fit:cover; flex:none; }
+.dad b { display:block; color:var(--dad); font-size:1rem; }
+.dad p { margin:0; font-size:1.15rem; line-height:1.45; }
+.cap { position:absolute; left:50%; bottom:16px; transform:translateX(-50%); max-width:min(900px,calc(100% - 32px)); background:var(--scrim); color:var(--cap); font:700 1.1rem/1.45 var(--read); padding:12px 24px; border-radius:12px; text-align:center; }
+.over { position:absolute; inset:0; display:grid; place-items:safe center; padding:24px max(16px,env(safe-area-inset-left,0px)); background:rgba(20,18,16,.55); overflow:auto; }
+.over[hidden] { display:none; }
+.sheet { width:min(820px,100%); background:var(--panel); border:3px solid var(--line); border-radius:18px; overflow:hidden; display:grid; }
+.sheet img.art, .sheet video.art { width:100%; aspect-ratio:16/8; object-fit:cover; display:block; border-bottom:3px solid var(--line); }
+.sheet video.art[hidden], .sheet img.art[hidden] { display:none; }
+.sheet .in { padding:24px; display:grid; gap:14px; }
+.sheet h2 { margin:0; font:700 2rem/1.1 var(--title); color:var(--holly); text-wrap:balance; }
+.sheet p { margin:0; max-width:62ch; }
+.sheet ul { margin:0; padding-left:1.2em; display:grid; gap:6px; }
+.row { display:flex; flex-wrap:wrap; gap:12px; }
+.set { display:grid; gap:8px; padding:12px; background:var(--well); border-radius:12px; }
+.seg { display:flex; flex-wrap:wrap; gap:8px; }
+.big { font-size:1.6rem; font-weight:700; color:var(--lamp); }
+.note { color:var(--muted); }
+.foot { background:var(--panel); border-top:3px solid var(--line); padding-block:8px calc(8px + env(safe-area-inset-bottom,0px)); padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); display:flex; flex-wrap:wrap; gap:10px; justify-content:center; align-items:center; }
+.foot .shoot { min-width:190px; min-height:64px; font-size:1.05rem; }
+.foot .hint { color:var(--muted); font-weight:700; }
+/* SMALL-SCREEN start (tools/small_screen.py) */
+#panelsBtn { white-space:nowrap; }
+:root.compact .bar { padding-block:4px; gap:6px 10px; }
+:root.compact .bar > :not(#panelsBtn):not(#pauseBtn):not(.score) { display:none !important; }
+:root.compact .bar button { min-height:44px; padding:0 12px; font-size:0.8rem; }
+:root.compact .bar .score { font-size:0.85rem; margin-right:auto; }
+:root.compact .foot { padding-block:4px calc(4px + env(safe-area-inset-bottom,0px)); gap:6px; }
+:root.compact .foot button { min-height:44px; min-width:44px; padding:0 10px; font-size:0.8rem; }
+:root.compact .foot .shoot { min-width:120px; min-height:48px; }
+:root.compact .foot .hint { display:none; }
+:root.compact .dad,:root.compact .talk,:root.compact .joe,:root.compact .clara,:root.compact .say { top:auto !important; bottom:8px; left:8px; right:8px; max-width:none; padding:6px 12px; border-radius:12px; gap:8px; }
+:root.compact .dad img,:root.compact .talk img,:root.compact .joe img,:root.compact .clara img,:root.compact .say img { display:none; }
+:root.compact .dad small,:root.compact .talk small,:root.compact .joe small,:root.compact .clara small,:root.compact .say small { display:none; }
+:root.compact .cap { bottom:auto; top:8px; }
+:root[data-box="s"] .dad p,:root[data-box="s"] .talk p,:root[data-box="s"] .joe p,:root[data-box="s"] .clara p,:root[data-box="s"] .say p, :root[data-box="s"] .cap { font-size:0.85rem; line-height:1.35; }
+:root[data-box="s"] .dad b,:root[data-box="s"] .talk b,:root[data-box="s"] .joe b,:root[data-box="s"] .clara b,:root[data-box="s"] .say b { font-size:0.8rem; }
+:root[data-box="l"] .dad p,:root[data-box="l"] .talk p,:root[data-box="l"] .joe p,:root[data-box="l"] .clara p,:root[data-box="l"] .say p, :root[data-box="l"] .cap { font-size:1.3rem; }
+:root.nobox .dad,:root.nobox .talk,:root.nobox .joe,:root.nobox .clara,:root.nobox .say { display:none !important; }
+/* SMALL-SCREEN end */
+</style>
+
+<div class="app">
+  <header class="bar">
+    <a class="home" id="homeLink" href="../" hidden>&larr; All games</a>
+    <h1>Marbles with Dad</h1>
+    <span class="score" id="scoreText" aria-live="polite">Clara 0 · Dad 0</span>
+    <button id="pauseBtn" aria-pressed="false">Pause</button>
+    <button id="setBtn">Settings</button>
+  </header>
+  <div class="stage" id="stage">
+    <canvas id="cv" aria-label="The parlor floor seen from above: a chalk ring full of glass marbles, a braided rug, a lamp and a bowl of popcorn. Clara's big swirly shooter waits at the edge of the ring."></canvas>
+    <div class="dad" id="dadBox" hidden><img id="dadPic" alt="Dad, smiling under his mustache" src="art/dad-portrait.jpg"><div><b id="dadWho">Dad</b><p id="dadLine"></p></div></div>
+    <p class="cap" id="cap" hidden></p>
+
+    <div class="over" id="startOver">
+      <div class="sheet">
+        <img class="art" id="startArt" alt="" hidden>
+        <div class="in">
+          <h2>Marbles with Dad</h2>
+          <p>Saturday morning in the parlor. Clara tips the marble bag out onto the boards, Dad settles down beside her, and the chalk ring is ready.</p>
+
+          <div class="set"><b>How hard is Dad?</b><div class="seg" data-key="level"><button data-v="easy">Easy (Dad takes one marble a turn at most)</button><button data-v="medium">Medium</button><button data-v="hard">Hard (Dad plays his best)</button></div></div>
+          <div class="row"><button class="primary" id="startBtn">Play with Dad</button></div>
+          <h3 style="margin:0">How to play</h3>
+          <ul>
+            <li><b>Left and right arrows</b> move your shooter around the ring.</li>
+            <li><b>Up and down arrows</b> turn your aim. Or point at the floor where you want to aim.</li>
+            <li><b>Hold the space bar</b> (or Hold to flick) to build power, then <b>let go</b>. The longer you hold, the harder the flick. The meter stays full until you let go.</li>
+            <li>A quick tap on the floor only aims. Press and keep holding on the floor to flick from there.</li>
+            <li>Knock a marble out of the ring and it is yours, and you <b>shoot again</b>. First to <b>7 marbles</b> wins.</li>
+            <li>Bernie may join in. He does not know the rules.</li>
+          </ul>
+          <div class="set"><b>When does Bernie flop onto the marbles?</b><div class="seg" data-key="bernie"><button data-v="start">At the start (he scatters them first)</button><button data-v="any">Any time (the game starts over)</button><button data-v="none">Not this game</button></div></div>
+          <p class="note">Dad's lines are written for the game (one is from Season 2, Episode 1). His voice is AI-generated.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="over" id="endOver" hidden>
+      <div class="sheet"><video class="art" id="endVid" src="art/dad-gathers.mp4" poster="art/dad-gathers.jpg" muted loop playsinline preload="none" hidden aria-label="Dad, smiling under his mustache, scoops the glass marbles back into the cloth bag on the parlor floor"></video><img class="art" id="endPic" src="art/dad-gathers.jpg" alt="Dad, smiling under his mustache, gathering the glass marbles back into the cloth bag" hidden><div class="in">
+        <h2 id="endTitle">Good game!</h2>
+        <p class="big" id="endScore"></p>
+        <p id="endNote"></p>
+        <div class="row"><button class="primary" id="againBtn">Play again</button></div>
+      </div></div>
+    </div>
+
+    <div class="over" id="setOver" hidden>
+      <div class="sheet"><div class="in">
+        <h2>Settings</h2>
+        <div class="set"><b>Look</b><div class="seg" data-key="look"><button data-v="dusk">Dark soft</button><button data-v="sand">Dim sand</button><button data-v="light">Light</button><button data-v="contrast">Extra contrast</button></div></div>
+        <div class="set"><b>Text size</b><div class="seg" data-key="size"><button data-v="1">Large</button><button data-v="1.2">Larger</button><button data-v="1.4">Largest</button></div></div>
+        <div class="set"><b>Shot helper (shows where your shooter and the marble will go)</b><div class="seg" data-key="guide"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="set"><b>How hard is Dad?</b><div class="seg" data-key="level"><button data-v="easy">Easy</button><button data-v="medium">Medium</button><button data-v="hard">Hard</button></div></div>
+        <div class="set"><b>Power meter speed</b><div class="seg" data-key="pace"><button data-v="slow">Slow</button><button data-v="normal">Normal</button></div></div>
+        <div class="set"><b>Music</b><div class="seg" data-key="music"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="set"><b>Sounds</b><div class="seg" data-key="sfx"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="set"><b>Dad's voice</b><div class="seg" data-key="voice"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="set"><b>Sound captions</b><div class="seg" data-key="caps"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="set"><b>Calm motion (Bernie walks in slowly, no lamp flicker)</b><div class="seg" data-key="calm"><button data-v="off">Off</button><button data-v="on">On</button></div></div>
+        <div class="row"><button class="primary" id="setDone">Done</button></div>
+      </div></div>
+    </div>
+  </div>
+  <footer class="foot">
+    <button id="moveL">&larr; Move</button>
+    <button id="aimL">Aim left</button>
+    <button class="shoot primary" id="shootBtn">Hold to flick</button>
+    <button id="aimR">Aim right</button>
+    <button id="moveR">Move &rarr;</button>
+    <button id="tipBtn">Ask Dad (T)</button>
+    <span class="hint" id="turnHint" aria-live="polite">Your turn</span>
+  </footer>
+</div>
+
+<script>
+(function(){
+'use strict';
+document.getElementById('homeLink').hidden=false;
+var $=function(id){return document.getElementById(id);}, root=document.documentElement;
+function lget(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+function lset(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+var S={ bernie:lget('mb-bernie')||'start', look:lget('mb-look')||'dusk', size:lget('mb-size')||'1', guide:lget('mb-guide')||'on', level:lget('mb-level')||(lget('mb-kind')==='fair'?'hard':'easy'), pace:lget('mb-pace')||'slow', music:lget('mb-music')||'on', sfx:lget('mb-sfx')||'on', caps:lget('mb-caps')||'on', voice:lget('mb-voice')||'on', calm:lget('mb-calm')||(reduce?'on':'off') };
+
+/* ---------- sound ---------- */
+function snd(src,loop,vol){ var a=new Audio(src); a.loop=!!loop; a.volume=vol; a.preload='auto'; return a; }
+var music=snd('audio/music-marbles-easy.mp3',true,0.2);   /* Tina's songs, one for each level (2026-11-18) */
+var LEVEL_MUSIC={easy:'audio/music-marbles-easy.mp3',medium:'audio/music-marbles-medium.mp3',hard:'audio/music-marbles-hard.mp3'};
+var SFX={ spill:'audio/sfx/marbles-spill.mp3', hum:'audio/sfx/dad-humming.mp3', flop:'audio/sfx/bernie-flop.mp3' };
+function play(n,v){ if(S.sfx!=='on') return; var a=new Audio(SFX[n]); a.volume=v==null?0.8:v; var p=a.play(); if(p&&p.catch) p.catch(function(){}); }
+function safePlay(a){ var p=a.play(); if(p&&p.catch) p.catch(function(){}); }
+function setTrack(src){ if(music.getAttribute('src')===src) return; var was=!music.paused; music.src=src; music.load(); if(was) safePlay(music); }
+/* Glass clicks are made in code: a short bright ping, louder for harder hits. */
+var AC=null;
+function click(strength,pitch){
+  if(S.sfx!=='on') return;
+  try{ AC=AC||new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return; }
+  var t=AC.currentTime, g=AC.createGain(), o=AC.createOscillator(), o2=AC.createOscillator();
+  var v=Math.min(0.35,0.05+strength*0.12);
+  o.type='sine'; o.frequency.value=(pitch||1)*(2600+Math.random()*500); o2.type='sine'; o2.frequency.value=o.frequency.value*1.52;
+  g.gain.setValueAtTime(v,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.09);
+  o.connect(g); o2.connect(g); g.connect(AC.destination); o.start(t); o2.start(t); o.stop(t+0.1); o2.stop(t+0.1);
+}
+var capT=null; function caption(t,ms){ if(S.caps!=='on') return; var c=$('cap'); c.textContent=t; c.hidden=false; clearTimeout(capT); capT=setTimeout(function(){c.hidden=true;},ms||2600); }
+
+/* ---------- Dad speaks ----------
+   His words show in his box and his voice plays (audio/voice/dad-<kind>-<n>.mp3, ElevenLabs "Sanchez").
+   A new line never cuts him off: it waits until he finishes. The game also waits for him before the next turn. */
+var DAD={
+  start:["Best floor in the house for marbles.","Knuckle down, kiddo. Thumb behind the shooter."],
+  aim:["Pick one near the edge. Easy ones first.","Knuckle down. Nice and steady.","Aim for the middle of it, not the side.","Breathe. Look where you want it to go. Then flick.","You've got a good eye, kiddo."],
+  hit:["Out of the ring! That one's yours. Shoot again.","Look at that. Go again.","You've been practicing. Admit it.","That's my girl.","Clean shot. Your grandmother would be proud."],
+  multi:["Two at once! Okay, now I'm worried."],
+  miss:["Close. Shake it off.","Almost. The floor has a little tilt right there.","That's okay. My turn to embarrass myself.","The floor has opinions today.","Next one. You've got this."],
+  dadHit:["Still got it.","There it goes. One for the old man.","Huh. Even I didn't expect that one.","Your grandfather taught me that shot.","Right out the door. I'll go again.","That one was rolling out anyway. I just helped.","Okay, I'll take that one. Don't look at me like that.","Beginner's luck. Forty years running."],
+  dadStreak:["Another one? Okay, I'll slow down. Maybe.","Don't worry, kiddo. I'm due for a miss."],
+  dadMulti:["Two at once! Don't tell your mother I'm showing off."],
+  dadMiss:["Well. That went somewhere.","Don't tell your Uncle Joe about that one.","My thumb slipped. That's my story.","Your turn, kiddo. Go easy on me.","Missed by a mile. Bernie could do better.","That's the floor's fault, not mine."],
+  bernie:["Bernie. Buddy. That's not how the game goes.","Well. He wants to play too."],
+  tipL:["See the one off to your left? Aim a little left and give it a good push."],
+  tipLs:["That one on your left is near the line. Aim a little left, and just a gentle flick."],
+  tipR:["Try the one on your right. Aim a little right, nice and firm."],
+  tipRs:["The one to your right is almost out already. A little right, and easy does it."],
+  tipS:["Straight ahead, kiddo. You're lined up. Give it some push."],
+  tipSs:["You're aimed right at it. Soft and steady."],
+  bernieStart:["Bernie! Well. New game, new layout."],
+  bernieReset:["Bernie! He wants a fresh start. Okay, from the top."],
+  claraWins:["You win again. Best floor in the house, best player in the house."],
+  dadWins:["I won one! Somebody mark the calendar."]
+};
+var lastPick={};
+/* Clara's lines: two from Season 2, Episode 1 ("You say that every time.", "Bernie! You're on the game!"), the rest new in her podcast voice */
+var CLARA={"hit": ["Got it!", "Out of the ring!", "Did you see that one, Dad?", "Plink! That's mine.", "One more for my pile.", "Bernie, did you see that?"], "streak": ["Two in a row. I'm on fire."],
+  "miss": ["Oops. Not my best.", "Almost!", "Ugh. My thumb wobbled.", "That marble moved. I saw it.", "Okay. Next one's going out."],
+  "dadHit": ["Lucky shot, Dad.", "Hey! I was saving that one.", "Show-off.", "You're just warming up, huh?"], "myTurn": ["Okay, okay. My turn.", "My turn! Stand back, Dad.", "Finally. Watch this."],
+  "start": ["Winner picks the cartoons."], "win": ["I win! Best floor in the house, right, Dad?"], "everyTime": ["You say that every time."], "bernie": ["Bernie! You're on the game!"]};
+var dadT=null, dadV=null, DQ=[], dadBusyTill=0;
+function musicLevel(){ return S.music!=='on' ? 0 : (dadV && !dadV.paused ? 0.08 : 0.2); }
+function readMs(t){ return 1800 + t.split(/\s+/).length*480; }
+function dadBusy(){ return (dadV && !dadV.ended && !dadV.paused) || Date.now()<dadBusyTill; }
+function dadSays(kind,ms,who){
+  who=who||'dad';
+  if(dadBusy()||DQ.length){ if(kind.indexOf('aim')!==0 && DQ.length<3) DQ.push({kind:kind,ms:ms,who:who}); return; }
+  dadSpeak(kind,ms,who);
+}
+/* Clara talks too: her podcast voice (audio/voice/clara-<kind>-<n>.mp3) */
+function claraSays(kind){ dadSays(kind,0,'clara'); }
+function dadSpeak(kind,ms,who){
+  who=who||'dad';
+  var list=(who==='clara'?CLARA:DAD)[kind], i=Math.floor(Math.random()*list.length), key=who+kind;
+  if(list.length>1 && i===lastPick[key]) i=(i+1)%list.length;
+  lastPick[key]=i; var t=list[i];
+  $('dadWho').textContent= who==='clara'?'Clara':'Dad'; $('dadWho').style.color= who==='clara'?'#9fc0f0':''; var dp=$('dadPic'); dp.hidden=false; dp.src= who==='clara'?'art/clara-face.jpg':'art/dad-portrait.jpg'; dp.alt= who==='clara'?'Clara, chestnut braids and rosy cheeks, from Tina’s Storykeeper film':'Dad, smiling under his mustache';
+  $('dadLine').textContent=t; $('dadBox').hidden=false; clearTimeout(dadT);
+  if(dadV){ dadV.pause(); dadV=null; }
+  ms=Math.max(ms||0, readMs(t)); dadBusyTill=Date.now()+ms;
+  if(S.voice==='on'){
+    var v=new Audio('audio/voice/'+who+'-'+kind+'-'+(i+1)+'.mp3'); v.volume=1; dadV=v;
+    v.addEventListener('loadedmetadata',function(){ if(v===dadV && isFinite(v.duration)){ var full=Math.max(ms, v.duration*1000+1500); dadBusyTill=Date.now()+full; clearTimeout(dadT); dadT=setTimeout(hideDad, full); } });
+    v.addEventListener('ended',function(){ if(v===dadV) music.volume=musicLevel(); });
+    safePlay(v); music.volume=musicLevel();
+  }
+  dadT=setTimeout(hideDad, ms);
+}
+function hideDad(){
+  if(paused){ clearTimeout(dadT); dadT=setTimeout(hideDad,500); return; }
+  if(dadV && !dadV.ended && !dadV.paused){ clearTimeout(dadT); dadT=setTimeout(hideDad,400); return; }
+  $('dadBox').hidden=true; dadBusyTill=0;
+  if(DQ.length && running){ dadBusyTill=Date.now()+700; setTimeout(function(){ if(running && DQ.length){ var q=DQ.shift(); dadSpeak(q.kind,q.ms,q.who); } },500); }
+}
+
+function apply(){
+  if(S.look==='dusk') root.removeAttribute('data-look'); else root.setAttribute('data-look',S.look);
+  root.style.setProperty('--scale',S.size);
+  document.querySelectorAll('.seg[data-key]').forEach(function(seg){ seg.querySelectorAll('button').forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.v===S[seg.dataset.key]?'true':'false'); }); });
+  music.volume=musicLevel(); if(S.voice!=='on' && dadV){ dadV.pause(); dadV=null; } if(S.music!=='on') music.pause(); else if(running && !paused) safePlay(music);
+  if(S.caps!=='on') $('cap').hidden=true;
+  resize();
+}
+document.querySelectorAll('.seg[data-key]').forEach(function(seg){ seg.addEventListener('click',function(e){ var b=e.target.closest('button'); if(!b) return; S[seg.dataset.key]=b.dataset.v; lset('mb-'+seg.dataset.key,b.dataset.v); apply(); }); });
+
+(function(){ var i=new Image(); i.onload=function(){ $('startArt').src=i.src; $('startArt').hidden=false; $('startArt').alt='Tina’s painting: glass marbles inside a chalk circle on the parlor floorboards, a braided rug, a lamp and a bowl of popcorn'; }; i.src='art/marbles-start.jpg'; })();
+
+/* ---------- world: units are "ring radii" (the chalk ring has radius 1), centred on the stage ---------- */
+var cv=$('cv'), ctx=cv.getContext('2d'), W=900, H=600, DPR=1, U=200, CX=450, CY=300, floorCv=null;
+function resize(){
+  var r=$('stage').getBoundingClientRect(); DPR=Math.min(devicePixelRatio||1,2);
+  W=Math.max(320,r.width); H=Math.max(300,r.height); cv.width=W*DPR; cv.height=H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0);
+  U=Math.min(W*0.38, H*0.37); CX=W/2; CY=H*0.51; floorCv=null; if(G) draw();
+}
+addEventListener('resize',resize);
+function sx(x){ return CX+x*U; } function sy(y){ return CY+y*U; }
+/* Difficulty: how much Dad's hand wobbles, how often he misses on purpose, how many marbles he may take in one turn,
+   how far ahead he may get, and how much extra push Clara's flick has. */
+var LV={ easy:{wob:0.2, missP:0.4, turnCap:1, leadCap:1, push:1.3},
+         medium:{wob:0.1, missP:0.2, turnCap:2, leadCap:3, push:1.15},
+         hard:{wob:0.04, missP:0.04, turnCap:99, leadCap:99, push:1.0} };
+function lv(){ return LV[S.level]||LV.easy; }
+var MR=0.068, SR=0.1, SH_DIST=1.12, WIN=7;   // marble radius, shooter radius, where shooters sit, marbles to win
+var COLORS=[['#3f9a4a','#c8402c'],['#2f62c0','#e9c64a'],['#c8402c','#3f9a4a'],['#e2b736','#c8402c'],['#3aa0a8','#e9c64a'],['#2f62c0','#3f9a4a'],['#7cbf5a','#e86a2c']];
+
+var G=null, running=false, paused=false, last=0, hold=false, keys={};
+function newGame(){
+  var m=[], i;
+  // 13 marbles in a cross, like a real ringer game
+  var pts=[[0,0]]; for(i=1;i<=3;i++){ pts.push([i,0],[-i,0],[0,i],[0,-i]); }
+  pts.forEach(function(p,k){ m.push({x:p[0]*0.17, y:p[1]*0.17, vx:0, vy:0, r:MR, m:1, c:COLORS[k%COLORS.length], k:k%12, spin:Math.random()*6, out:false, owner:null}); });
+  G={ marbles:m, clara:0, dad:0, turn:'clara', phase:'aim', theta:Math.PI/2, aim:0, power:0, pdir:1, shooter:null, wait:0, shots:0, knocked:0,
+      dadTheta:-Math.PI/2, dadStreak:0, bernie:{on:false, x:-1.9, y:0.95, tx:-1.9, ty:0.95, t:0, done:false, lying:false}, t:0, hummed:0, bernieAt:(S.bernie==='any'?2+Math.floor(Math.random()*6):999), nextTurn:'clara', tip:null, dadPlan:null };
+  updateScore(); setHint();
+}
+function updateScore(){ $('scoreText').textContent='Clara '+G.clara+' · Dad '+G.dad; }
+function setHint(){ var h=$('turnHint'); if(!G) return; h.textContent = G.turn==='clara' ? (G.phase==='aim'?'Your turn':'Rolling...') : 'Dad’s turn'; }
+
+/* where the shooter sits on the ring, and which way it points */
+function shooterPos(theta){ return {x:Math.cos(theta)*SH_DIST, y:Math.sin(theta)*SH_DIST}; }
+function aimDir(theta,aim){ var a=theta+Math.PI+aim; return {x:Math.cos(a), y:Math.sin(a)}; }
+
+/* ---------- input ---------- */
+addEventListener('keydown',function(e){
+  if(!running) return;
+  if([' ','ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].indexOf(e.key)>-1) e.preventDefault();
+  if(e.key==='p'||e.key==='P'||e.key==='Escape'){ togglePause(); return; }
+  keys[e.key]=true;
+  if(e.key===' ' && !e.repeat) startHold();
+  if((e.key==='t'||e.key==='T') && !e.repeat) dadTip();
+});
+addEventListener('keyup',function(e){ keys[e.key]=false; if(e.key===' ') release(); });
+$('tipBtn').addEventListener('click',dadTip);
+var sb=$('shootBtn');
+sb.addEventListener('pointerdown',function(e){ e.preventDefault(); startHold(); });
+['pointerup','pointercancel','pointerleave'].forEach(function(ev){ sb.addEventListener(ev,function(){ release(); }); });
+function held(id,fn){ var b=$(id), t=null; b.addEventListener('pointerdown',function(e){ e.preventDefault(); fn(); t=setInterval(fn,90); }); ['pointerup','pointerleave','pointercancel'].forEach(function(ev){ b.addEventListener(ev,function(){ clearInterval(t); }); }); }
+held('moveL',function(){ move(-1); }); held('moveR',function(){ move(1); });
+held('aimL',function(){ turn(-1); }); held('aimR',function(){ turn(1); });
+function myTurn(){ return running && !paused && G && G.phase==='aim' && G.turn==='clara'; }
+function move(d){ if(!myTurn()||hold) return; G.theta+=d*0.045; }  // "left" walks clockwise on screen when Clara sits at the bottom
+function turn(d){ if(!myTurn()) return; G.aim=Math.max(-1.1,Math.min(1.1,G.aim+d*0.03)); }
+/* point at the floor to aim; press and hold there to build power */
+function aimAt(e){ if(!myTurn()) return; var r=cv.getBoundingClientRect(), px=(e.clientX-r.left-CX)/U, py=(e.clientY-r.top-CY)/U, s=shooterPos(G.theta);
+  var a=Math.atan2(py-s.y,px-s.x)-(G.theta+Math.PI); while(a>Math.PI) a-=2*Math.PI; while(a<-Math.PI) a+=2*Math.PI; G.aim=Math.max(-1.1,Math.min(1.1,a)); }
+cv.addEventListener('pointermove',function(e){ if(e.pointerType==='mouse'||hold) aimAt(e); });
+/* on the floor: a quick tap only aims; press and keep holding to build power, then let go */
+cv.addEventListener('pointerdown',function(e){ aimAt(e); startHold(true); try{cv.setPointerCapture(e.pointerId);}catch(_){} });
+cv.addEventListener('pointerup',function(){ release(); });
+cv.addEventListener('pointercancel',function(){ hold=false; if(G) G.power=0; });
+var holdFromFloor=false, holdT=0;
+function startHold(floor){ if(!myTurn()) return; hold=true; holdFromFloor=!!floor; holdT=0; G.power=0; }
+function release(){ if(!hold) return; hold=false;
+  if(!myTurn()) return;
+  if(holdFromFloor && holdT<0.3){ G.power=0; return; }               // that was just a tap to aim
+  flick('clara', G.theta, G.aim, Math.max(0.08,G.power)); }
+
+/* ---------- physics ---------- */
+function flick(who,theta,aim,power){
+  var s=shooterPos(theta), d=aimDir(theta,aim), sp=0.7+power*2.9*(who==='clara'?lv().push:1);
+  G.shooter={x:s.x, y:s.y, vx:d.x*sp, vy:d.y*sp, r:SR, m:2.2, who:who, spin:0};
+  G.phase='roll'; G.knocked=0; G.rollT=0; G.lastClick=0; setHint();
+  click(0.6,0.8);
+}
+function bodies(){ var b=G.marbles.filter(function(m){return !m.gone;}); if(G.shooter) b.push(G.shooter); return b; }
+function step(dt, list, quiet){
+  var i,j,a,b;
+  for(i=0;i<list.length;i++){ a=list[i]; a.x+=a.vx*dt; a.y+=a.vy*dt;
+    var sp=Math.hypot(a.vx,a.vy); if(sp>0){ var ns=Math.max(0, sp - (0.55+sp*0.9)*dt); a.vx*=ns/sp; a.vy*=ns/sp; if(a.spin!=null) a.spin+=sp*dt*8; }
+    // the edge of the floor we can see: roll back softly
+    var lx=(W/2)/U-0.06, ly=(H*0.47)/U-0.06;
+    if(a.x<-lx-0.4){a.x=-lx-0.4; a.vx=Math.abs(a.vx)*0.4;} if(a.x>lx+0.4){a.x=lx+0.4; a.vx=-Math.abs(a.vx)*0.4;}
+    if(a.y<-ly-0.3){a.y=-ly-0.3; a.vy=Math.abs(a.vy)*0.4;} if(a.y>ly+0.3){a.y=ly+0.3; a.vy=-Math.abs(a.vy)*0.4;}
+  }
+  for(i=0;i<list.length;i++) for(j=i+1;j<list.length;j++){ a=list[i]; b=list[j];
+    var dx=b.x-a.x, dy=b.y-a.y, dist=Math.hypot(dx,dy), rr=a.r+b.r;
+    if(dist<rr && dist>1e-6){ var nx=dx/dist, ny=dy/dist, ov=rr-dist, tm=a.m+b.m;
+      a.x-=nx*ov*b.m/tm; a.y-=ny*ov*b.m/tm; b.x+=nx*ov*a.m/tm; b.y+=ny*ov*a.m/tm;
+      var rv=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;
+      if(rv<0){ var jj=-(1+0.93)*rv/(1/a.m+1/b.m); a.vx-=jj*nx/a.m; a.vy-=jj*ny/a.m; b.vx+=jj*nx/b.m; b.vy+=jj*ny/b.m;
+        if(!quiet && G.t-G.lastClick>0.03){ G.lastClick=G.t; click(-rv, (a.m>1||b.m>1)?0.85:1); } }
+    }
+  }
+}
+function moving(list){ for(var i=0;i<list.length;i++) if(Math.hypot(list[i].vx,list[i].vy)>0.02) return true; return false; }
+/* a marble whose middle has crossed the chalk line is out of the ring */
+function checkOut(){
+  G.marbles.forEach(function(m){ if(!m.out && Math.hypot(m.x,m.y)>1.0){ m.out=true; m.owner=G.shooter?G.shooter.who:G.turn; G.knocked++; } });
+}
+function settle(){
+  var who=G.turn, got=G.knocked;
+  if(who==='clara') G.claraStreak = got>0 ? (G.claraStreak||0)+1 : 0;
+  G.marbles.forEach(function(m){ if(m.out && !m.gone){ m.gone=true; if(m.owner==='clara') G.clara++; else G.dad++; } });
+  G.shooter=null; updateScore();
+  if(who==='clara'){
+    if(got>=2){ caption('[Click, click] Two marbles roll out of the ring!',2600); dadSays('multi'); }
+    else if(got===1){ caption('[Click] A marble rolls out of the ring. Clara’s!',2400); if(G.claraStreak>=1) claraSays('streak'); else if(Math.random()<0.6) claraSays('hit'); dadSays('hit'); }
+    else { caption('[The shooter rolls to a stop] No marble out.',2200); if(Math.random()<0.5) claraSays('miss'); else if(Math.random()<0.6) dadSays('miss'); }
+  } else {
+    if(got>=1){ G.dadStreak++; caption(got>1?'[Click, click] Dad knocks out '+got+' marbles.':'[Click] Dad knocks a marble out.',2400); dadSays(got>1?'dadMulti':G.dadStreak>=2?'dadStreak':'dadHit'); if(Math.random()<0.4) claraSays('dadHit'); }
+    else { caption('[The shooter rolls wide] Dad missed.',2200); dadSays('dadMiss'); if(Math.random()<0.5) claraSays('myTurn'); }
+  }
+  G.phase='after'; G.wait=0.9; G.shots++;
+  G.nextTurn = got>0 ? who : (who==='clara'?'dad':'clara');
+}
+function next(){
+  if(G.clara>=WIN||G.dad>=WIN||G.marbles.every(function(m){return m.gone;})){ end(); return; }
+  if(!G.bernie.done && G.shots>=G.bernieAt){ bernieComes(); return; }
+  G.turn=G.nextTurn;
+  if(G.turn==='clara'){ G.phase='aim'; G.power=0; var rq=Math.random(); if(!dadBusy()){ if(rq<0.3) dadTip(); else if(rq<0.45) dadSays('aim'); } if(Math.random()<0.25 && G.t-G.hummed>40){ G.hummed=G.t; setTimeout(function(){ if(running&&!dadBusy()){ play('hum',0.55); caption('[Dad hums a few notes of his unfinished tune]',3200); } },2500); } }
+  else { if(G.turn!==G.lastTurn) G.dadStreak=0; G.phase='dadThink'; G.wait=1.0; G.dadPlan=planDad(); }
+  G.lastTurn=G.turn;
+  setHint();
+}
+
+/* ---------- Dad's shot: he tries several shots in his head and picks a good one ---------- */
+function planDad(){
+  var best=null, miss=null, L=lv(), live=G.marbles.filter(function(m){return !m.gone;});
+  var holdBack = G.dadStreak>=L.turnCap || (G.dad-G.clara)>=L.leadCap || Math.random()<L.missP;
+  for(var k=0;k<36;k++){
+    var target=live[Math.floor(Math.random()*live.length)], ang=Math.atan2(target.y,target.x);
+    var theta=ang+Math.PI+(Math.random()-0.5)*1.4;                      // sit on the far side and push it out
+    var s=shooterPos(theta), dx=target.x-s.x, dy=target.y-s.y;
+    var aim=Math.atan2(dy,dx)-(theta+Math.PI); while(aim>Math.PI) aim-=2*Math.PI; while(aim<-Math.PI) aim+=2*Math.PI;
+    if(Math.abs(aim)>1.1) continue;
+    var power=0.35+Math.random()*0.5, score=simulate(theta,aim,power);
+    var room=L.turnCap-G.dadStreak; if(Math.floor(score)>room) score=room-(Math.floor(score)-room)-0.5;   // on easier levels he won't take more than his share in one shot
+    if(!best||score>best.score) best={theta:theta,aim:aim,power:power,score:score};
+    if(score<0.5 && (!miss||Math.random()<0.3)) miss={theta:theta,aim:aim,power:power,score:score,sure:true};   // a real-looking shot that knocks nothing out
+  }
+  if(!best) best={theta:G.dadTheta,aim:0,power:0.5,score:0};
+  if(holdBack){                                                         // on easier levels Dad holds back: a real-looking shot that slips past every marble
+    for(var tries=0; tries<40; tries++){ var tg=live[Math.floor(Math.random()*live.length)], th=Math.atan2(tg.y,tg.x)+Math.PI+(Math.random()-0.5)*1.2, sp0=shooterPos(th);
+      var am=Math.atan2(tg.y-sp0.y,tg.x-sp0.x)-(th+Math.PI); while(am>Math.PI) am-=2*Math.PI; while(am<-Math.PI) am+=2*Math.PI;
+      for(var off=0.12; off<0.8; off+=0.06){ var a2=am+(Math.random()<0.5?-off:off); if(Math.abs(a2)<=1.1 && !firstHit(th,a2) && simulate(th,a2,0.4)<0.5) return {theta:th,aim:a2,power:0.3+Math.random()*0.2,score:0}; } }
+    if(miss) return miss; }
+  var wobble=L.wob;                                                    // a gentle Dad's hand shakes a bit more
+  best.aim+= (Math.random()-0.5)*wobble*2; best.power=Math.max(0.15,Math.min(1,best.power+(Math.random()-0.5)*wobble));
+  if(holdBack) best.aim+= (Math.random()<0.5?-1:1)*0.3;               // no easy miss found: he is too busy humming
+  return best;
+}
+/* ---------- Dad's aiming tip: he tries shots from where Clara stands and tells her which way ---------- */
+function firstHit(theta,aim){ var s=shooterPos(theta), d=aimDir(theta,aim), best=null;
+  G.marbles.forEach(function(m){ if(m.gone) return; var fx=m.x-s.x, fy=m.y-s.y, t=fx*d.x+fy*d.y; if(t<=0) return; var px=fx-d.x*t, py=fy-d.y*t, rr=m.r+SR, q=rr*rr-(px*px+py*py); if(q<0) return; var hit=t-Math.sqrt(q); if(!best||hit<best.t) best={t:hit,m:m}; });
+  return best&&best.m; }
+function dadTip(){ if(!running||paused||!G||G.turn!=='clara'||G.phase!=='aim') return;
+  var best=null; for(var a=-1.1;a<=1.1;a+=0.06) for(var pw=0.3;pw<=0.95;pw+=0.2){ var sc=simulate(G.theta,a,pw); if(!best||sc>best.score+0.01||(Math.abs(sc-best.score)<=0.01&&Math.abs(a-G.aim)<Math.abs(best.aim-G.aim))) best={aim:a,power:pw,score:sc}; }
+  if(!best||best.score<1){ dadSays('aim'); caption('[Dad studies the ring. Nothing easy from here: try moving around the ring]',3200); return; }
+  var diff=best.aim-G.aim, dir=diff>0.08?'R':diff<-0.08?'L':'S', soft=best.power<0.5;
+  G.tip={aim:best.aim,t:9,m:firstHit(G.theta,best.aim)}; dadSays('tip'+dir+(soft?'s':'')); }
+function simulate(theta,aim,power){
+  var list=G.marbles.filter(function(m){return !m.gone;}).map(function(m){ return {x:m.x,y:m.y,vx:0,vy:0,r:m.r,m:m.m}; });
+  var s=shooterPos(theta), d=aimDir(theta,aim), sp=0.7+power*2.9, sh={x:s.x,y:s.y,vx:d.x*sp,vy:d.y*sp,r:SR,m:2.2};
+  list.push(sh);
+  for(var t=0;t<4;t+=1/90){ step(1/90,list,true); if(!moving(list)) break; }
+  var out=0; for(var i=0;i<list.length-1;i++) if(Math.hypot(list[i].x,list[i].y)>1.0) out++;
+  return out + (Math.hypot(sh.x,sh.y)<1?0.1:0);
+}
+
+/* ---------- Bernie (once a game) ---------- */
+function bernieComes(){
+  var B=G.bernie; B.done=true; B.on=true; B.lying=false; B.t=0;
+  var side=Math.random()<0.5?-1:1; B.side=side; B.x=side*((W/2)/U+0.8); B.y=0.55; B.tx=side*1.5; B.ty=0.35;   // he lies just outside the chalk line, so he never hides a marble
+  G.phase='bernie'; setHint(); $('turnHint').textContent='Here comes Bernie';
+  play('flop',0.8); caption('[Bernie’s nails scrabble on the boards. He flops right down on the game!]',3600);
+}
+function bernieLands(){
+  var B=G.bernie; B.lying=true;
+  // marbles near him scatter a little, but none leave the ring because of Bernie
+  var reset=(S.bernie==='any');
+  if(reset){ G.marbles.forEach(function(m){ m.gone=false; m.out=false; m.owner=null; }); G.clara=0; G.dad=0; G.nextTurn='clara'; updateScore(); }
+  // the marbles scatter to new places inside the ring
+  var placed=[]; G.marbles.forEach(function(m){ if(m.gone) return; for(var t=0;t<60;t++){ var a=Math.random()*Math.PI*2, r=Math.sqrt(Math.random())*0.8, x=Math.cos(a)*r, y=Math.sin(a)*r;
+      if(placed.every(function(p){ return Math.hypot(p[0]-x,p[1]-y)>MR*2.4; })){ m.x=x; m.y=y; break; } } placed.push([m.x,m.y]); m.vx=(Math.random()-0.5)*0.6; m.vy=(Math.random()-0.5)*0.6; });
+  G.phase='bernieRoll'; $('turnHint').textContent= reset?'Bernie scattered everything. New game!':'Bernie scattered the marbles';
+  caption(reset?'[Marbles scatter everywhere. Every one rolls back into the ring. Start over!]':'[Marbles scatter across the ring into a whole new pattern]',3600);
+  setTimeout(function(){ if(running){ claraSays('bernie'); dadSays(reset?'bernieReset':'bernieStart'); } },700);
+}
+
+/* ---------- update ---------- */
+function update(dt){
+  G.t+=dt;
+  if(G.tip){ G.tip.t-=dt; if(G.tip.t<=0||G.turn!=='clara') G.tip=null; }
+  if(G.phase==='aim' && G.turn==='clara'){
+    if(keys.ArrowLeft) move(-dt*14); if(keys.ArrowRight) move(dt*14);
+    if(keys.ArrowUp) turn(-dt*18); if(keys.ArrowDown) turn(dt*18);
+    if(hold){ holdT+=dt; var spd=S.pace==='slow'?0.6:1.0; if(!(holdFromFloor && holdT<0.3)) G.power=Math.min(1,G.power+dt*spd); }   // fills up and stays full until you let go
+  }
+  if(G.phase==='roll'){
+    var list=bodies(), n=4; for(var i=0;i<n;i++) step(dt/n,list,false);
+    checkOut(); G.rollT+=dt;
+    if((!moving(list) && G.rollT>0.4) || G.rollT>8){ list.forEach(function(b){b.vx=0;b.vy=0;}); settle(); }
+  }
+  if(G.phase==='after'){ G.wait-=dt; if(G.wait<=0) next(); }   // faster turns (Tina, 2026-11-18): don't wait for the talking to finish
+  if(G.phase==='dadThink'){ G.wait-=dt; var p=G.dadPlan;
+    G.dadTheta+= (p.theta-G.dadTheta)*Math.min(1,dt*3);
+    if(G.wait<=0){ G.dadTheta=p.theta; flick('dad',p.theta,p.aim,p.power); } }
+  var B=G.bernie;
+  if(G.phase==='bernie'){ var sp=(S.calm==='on'?0.9:2.2)*dt; var dx=B.tx-B.x, dy=B.ty-B.y, d=Math.hypot(dx,dy); if(d<sp){ B.x=B.tx; B.y=B.ty; bernieLands(); } else { B.x+=dx/d*sp; B.y+=dy/d*sp; } }
+  if(G.phase==='bernieRoll'){
+    var ml=G.marbles.filter(function(m){return !m.gone;}); for(var k=0;k<4;k++) step(dt/4,ml,false);
+    ml.forEach(function(m){ var r=Math.hypot(m.x,m.y); if(r>0.92){ m.x*=0.92/r; m.y*=0.92/r; m.vx*=-0.3; m.vy*=-0.3; } });
+    if(!moving(ml)){ G.phase='after'; G.wait=0.8; }
+  }
+  if(B.on) B.t+=dt;
+}
+
+/* ---------- drawing ---------- */
+function rnd(seed){ var s=seed; return function(){ s=(s*16807)%2147483647; return (s-1)/2147483646; }; }
+function makeFloor(){
+  var c=document.createElement('canvas'); c.width=W*DPR; c.height=H*DPR; var g=c.getContext('2d'); g.setTransform(DPR,0,0,DPR,0,0);
+  var R=rnd(7), ph=U*0.3, row, x;
+  for(row=0; row*ph<H+ph; row++){
+    var y=row*ph, base=['#9a5a2c','#a2622f','#94552a','#9e5d2e'][row%4];
+    g.fillStyle=base; g.fillRect(0,y,W,ph);
+    for(var k=0;k<7;k++){ g.strokeStyle='rgba(60,30,12,'+(0.08+R()*0.1)+')'; g.lineWidth=1+R()*1.5; g.beginPath(); var yy=y+R()*ph; g.moveTo(0,yy); for(x=0;x<W;x+=40) g.lineTo(x,yy+Math.sin(x*0.01+k)*2); g.stroke(); }
+    var off=(row%2)*U*0.9+R()*U*0.3; for(x=off-U*1.8; x<W; x+=U*1.8){ g.fillStyle='rgba(50,24,10,.55)'; g.fillRect(x,y,3,ph); }
+    g.fillStyle='rgba(40,18,6,.6)'; g.fillRect(0,y+ph-3,W,3);
+  }
+  // warm lamp glow in the top-left corner, soft shade bottom-right
+  var lg=g.createRadialGradient(W*0.04,H*0.02,10,W*0.04,H*0.02,Math.max(W,H)*0.75); lg.addColorStop(0,'rgba(255,214,140,.55)'); lg.addColorStop(0.5,'rgba(255,190,110,.12)'); lg.addColorStop(1,'rgba(40,16,4,.28)'); g.fillStyle=lg; g.fillRect(0,0,W,H);
+  // lamp base
+  g.fillStyle='#e7cf9a'; g.beginPath(); g.arc(W*0.02,H*0.0,U*0.42,0,Math.PI*2); g.fill(); g.fillStyle='#c9ac72'; g.beginPath(); g.arc(W*0.02,H*0.0,U*0.3,0,Math.PI*2); g.fill();
+  // braided rug, bottom-left
+  var rx=-U*0.05, ry=H+U*0.05, cols=['#b8452f','#3f5d8f','#e6d6b4','#b8452f','#8a3b2c','#3f5d8f','#e6d6b4'];
+  for(var ring=0; ring<14; ring++){ var rad=U*0.95-ring*U*0.065; if(rad<8) break; g.lineWidth=U*0.06; g.setLineDash([U*0.06,U*0.03]); g.strokeStyle=cols[ring%cols.length]; g.beginPath(); g.arc(rx,ry,rad,0,Math.PI*2); g.stroke(); }
+  g.setLineDash([]);
+  // popcorn bowl, bottom-right
+  var bx=W-U*0.38, by=H-U*0.32, br=U*0.36;
+  g.fillStyle='rgba(30,14,4,.35)'; g.beginPath(); g.arc(bx+8,by+10,br,0,Math.PI*2); g.fill();
+  g.fillStyle='#d9d2c2'; g.beginPath(); g.arc(bx,by,br,0,Math.PI*2); g.fill(); g.strokeStyle='#9a4a32'; g.lineWidth=5; g.stroke();
+  for(var p=0;p<60;p++){ var a=R()*Math.PI*2, d=R()*br*0.8; g.fillStyle=R()<0.25?'#e8c88a':'#fbf4e2'; g.beginPath(); g.arc(bx+Math.cos(a)*d,by+Math.sin(a)*d,U*0.035+R()*U*0.02,0,Math.PI*2); g.fill(); }
+  for(p=0;p<4;p++){ g.fillStyle='#fbf4e2'; g.beginPath(); g.arc(bx-br*1.2-R()*U*0.3,by-br*0.4+R()*U*0.4,U*0.03,0,Math.PI*2); g.fill(); }
+  // chalk ring: lots of tiny dusty dots
+  for(var q=0;q<2600;q++){ var aa=R()*Math.PI*2, rr2=1+(R()+R()-1)*0.03; g.fillStyle='rgba(246,240,226,'+(0.35+R()*0.5)+')'; g.fillRect(CX+Math.cos(aa)*rr2*U, CY+Math.sin(aa)*rr2*U, 1.6+R()*1.6, 1.6+R()*1.6); }
+  for(q=0;q<140;q++){ aa=R()*Math.PI*2; rr2=1+(R()-0.5)*0.25; g.fillStyle='rgba(246,240,226,.4)'; g.fillRect(CX+Math.cos(aa)*rr2*U, CY+Math.sin(aa)*rr2*U, 2, 2); }
+  return c;
+}
+function hexA(h,a){ var n=parseInt(h.slice(1),16); return 'rgba('+(n>>16)+','+((n>>8)&255)+','+(n&255)+','+a+')'; }
+/* Tina's painted marbles (cut from her Marble_set1 picture). k = 0..11 for ring marbles, 'clara' for her rainbow shooter, 'dad' for his. */
+var PM={}; (function(){ for(var i=1;i<=12;i++) (function(i){ var im=new Image(); im.onload=function(){ PM[i-1]=im; }; im.src='art/painted/marble-'+i+'.png'; })(i);
+  var sh=new Image(); sh.onload=function(){ PM.clara=sh; }; sh.src='art/painted/shooter.png';
+  var ds=new Image(); ds.onload=function(){ PM.dad=ds; }; ds.src='art/painted/dad-shooter.png';   // Tina's blue-and-gold marble (2026-11-18)
+  var bt=new Image(); bt.onload=function(){ PM.bernie=bt; }; bt.src='art/bernie-top.png'; })();
+function drawMarble(x,y,r,c,spin,big,k){
+  var X=sx(x), Y=sy(y), R=r*U;
+  ctx.fillStyle='rgba(30,12,2,.35)'; ctx.beginPath(); ctx.ellipse(X+R*0.25,Y+R*0.35,R,R*0.85,0,0,Math.PI*2); ctx.fill();
+  var pic = k==='dad' ? (PM.dad||PM[1]) : PM[k];
+  if(pic){ ctx.save(); ctx.translate(X,Y); ctx.rotate((spin||0)*0.35); ctx.drawImage(pic,-R*1.06,-R*1.06,R*2.12,R*2.12); ctx.restore();
+    if(k==='dad' && !PM.dad){ ctx.strokeStyle='#f5cf85'; ctx.lineWidth=Math.max(2,R*0.1); ctx.beginPath(); ctx.arc(X,Y,R*1.02,0,Math.PI*2); ctx.stroke(); }
+    return; }
+  var gr=ctx.createRadialGradient(X-R*0.3,Y-R*0.3,R*0.1,X,Y,R); gr.addColorStop(0,'rgba(255,255,255,.75)'); gr.addColorStop(0.35,big?'rgba(220,235,240,.6)':hexA(c[0],.55)); gr.addColorStop(1,big?'rgba(90,110,130,.8)':hexA(c[0],.95));
+  ctx.save(); ctx.beginPath(); ctx.arc(X,Y,R,0,Math.PI*2); ctx.clip();
+  ctx.fillStyle=gr; ctx.fillRect(X-R,Y-R,R*2,R*2);
+  ctx.translate(X,Y); ctx.rotate(spin||0);
+  var petals=big?['#c8402c','#e9c64a','#3f9a4a','#2f62c0','#e86a2c','#7a3fa0']:c;
+  for(var i=0;i<petals.length;i++){ ctx.rotate(Math.PI*2/petals.length*(big?1:0.5)); ctx.fillStyle=petals[i]; ctx.beginPath(); ctx.moveTo(-R*0.9,0); ctx.quadraticCurveTo(0,-R*(big?0.38:0.55),R*0.9,0); ctx.quadraticCurveTo(0,R*(big?0.1:0.2),-R*0.9,0); ctx.fill(); }
+  ctx.restore();
+  ctx.strokeStyle='rgba(40,20,8,.55)'; ctx.lineWidth=Math.max(1,R*0.08); ctx.beginPath(); ctx.arc(X,Y,R,0,Math.PI*2); ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,.9)'; ctx.beginPath(); ctx.arc(X-R*0.35,Y-R*0.38,R*0.18,0,Math.PI*2); ctx.fill();
+}
+function drawBernie(){
+  var B=G.bernie; if(!B.on) return;
+  if(B.lying && PM.bernie){   // Tina's painting of Bernie flopped on the floorboards; head toward the ring
+    var im=PM.bernie, w=U*1.25, h=w*im.height/im.width, br=1+Math.sin(B.t*2)*0.015;
+    ctx.save(); ctx.translate(sx(B.x),sy(B.y)); ctx.scale(B.side<0?-br:br,br);
+    ctx.fillStyle='rgba(30,12,2,.28)'; ctx.beginPath(); ctx.ellipse(w*0.04,h*0.08,w*0.46,h*0.36,0,0,Math.PI*2); ctx.fill();
+    ctx.drawImage(im,-w/2,-h/2,w,h); ctx.restore(); return; }
+  var X=sx(B.x), Y=sy(B.y), s=U*0.28, breathe=B.lying?1+Math.sin(B.t*2)*0.025:1, f=B.side>0?-1:1, walk=B.lying?0:Math.sin(B.t*14)*0.12;
+  ctx.save(); ctx.translate(X,Y); ctx.scale(f,1);
+  ctx.fillStyle='rgba(30,12,2,.3)'; ctx.beginPath(); ctx.ellipse(s*0.15,s*0.25,s*1.5,s*0.85,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#f4f1ea';
+  if(!B.lying){ [[-0.9,0.5],[-0.9,-0.5],[0.7,0.55],[0.7,-0.55]].forEach(function(l,i){ ctx.beginPath(); ctx.ellipse(s*(l[0]+(i%2?walk:-walk)),s*l[1]*1.1,s*0.22,s*0.16,0,0,Math.PI*2); ctx.fill(); }); }
+  ctx.save(); ctx.scale(breathe,breathe); ctx.beginPath(); ctx.ellipse(-s*0.2,0,s*1.25,s*0.72,0,0,Math.PI*2); ctx.fill(); ctx.restore();
+  ctx.fillStyle='#e6e1d6'; for(var i=0;i<9;i++){ ctx.beginPath(); ctx.arc(-s*1.1+i*s*0.24, (i%2?-1:1)*s*0.62, s*0.14,0,Math.PI*2); ctx.fill(); }
+  ctx.beginPath(); ctx.ellipse(-s*1.45,s*(B.lying?0.3:0)+Math.sin(B.t*(B.lying?3:9))*s*0.12,s*0.45,s*0.16,B.lying?0.5:0.1,0,Math.PI*2); ctx.fill(); // tail
+  ctx.fillStyle='#f4f1ea'; ctx.beginPath(); ctx.arc(s*1.05,0,s*0.48,0,Math.PI*2); ctx.fill();          // head
+  ctx.fillStyle='#e2dccf'; ctx.beginPath(); ctx.ellipse(s*0.95,-s*0.45,s*0.28,s*0.16,0.3,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.ellipse(s*0.95,s*0.45,s*0.28,s*0.16,-0.3,0,Math.PI*2); ctx.fill(); // ears
+  ctx.fillStyle='#f4f1ea'; ctx.beginPath(); ctx.ellipse(s*1.5,0,s*0.26,s*0.22,0,0,Math.PI*2); ctx.fill();   // muzzle
+  ctx.fillStyle='#1d1a18'; ctx.beginPath(); ctx.arc(s*1.72,0,s*0.09,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(s*1.12,-s*0.2,s*0.06,0,Math.PI*2); ctx.arc(s*1.12,s*0.2,s*0.06,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+/* the shot helper: a dotted line to the first marble it will touch, then a green line showing which way that marble goes */
+function drawGuide(){
+  if(S.guide!=='on'||G.turn!=='clara'||G.phase!=='aim') return;
+  var s=shooterPos(G.theta), d=aimDir(G.theta,G.aim), best=null;
+  G.marbles.forEach(function(m){ if(m.gone) return; var fx=m.x-s.x, fy=m.y-s.y, t=fx*d.x+fy*d.y; if(t<=0) return; var px=fx-d.x*t, py=fy-d.y*t, rr=m.r+SR, q=rr*rr-(px*px+py*py); if(q<0) return; var hit=t-Math.sqrt(q); if(!best||hit<best.t) best={t:hit,m:m}; });
+  var len=best?best.t:2.2;
+  ctx.fillStyle='rgba(255,236,190,.95)'; ctx.strokeStyle='rgba(40,18,6,.9)'; ctx.lineWidth=2;
+  for(var t=SR+0.04;t<len;t+=0.07){ ctx.beginPath(); ctx.arc(sx(s.x+d.x*t),sy(s.y+d.y*t),Math.max(3.5,U*0.016),0,Math.PI*2); ctx.fill(); ctx.stroke(); }
+  if(best){
+    var cx=s.x+d.x*best.t, cy=s.y+d.y*best.t, m=best.m, nx=m.x-cx, ny=m.y-cy, nl=Math.hypot(nx,ny)||1; nx/=nl; ny/=nl;
+    ctx.strokeStyle='rgba(40,18,6,.9)'; ctx.lineWidth=Math.max(4,U*0.03)+3; ctx.beginPath(); ctx.arc(sx(cx),sy(cy),SR*U,0,Math.PI*2); ctx.stroke();
+    ctx.strokeStyle='rgba(255,236,190,.95)'; ctx.lineWidth=Math.max(3,U*0.018); ctx.stroke();
+    ctx.lineCap='round'; ctx.strokeStyle='rgba(20,40,20,.9)'; ctx.lineWidth=Math.max(7,U*0.04); ctx.beginPath(); ctx.moveTo(sx(m.x),sy(m.y)); ctx.lineTo(sx(m.x+nx*0.45),sy(m.y+ny*0.45)); ctx.stroke();
+    ctx.strokeStyle='#a8f0b4'; ctx.lineWidth=Math.max(4,U*0.022); ctx.stroke(); ctx.lineCap='butt';
+  }
+}
+function drawMeter(){
+  if(G.turn!=='clara'||G.phase!=='aim') return;
+  var w=Math.max(34,U*0.13), h=Math.min(H*0.42,U*1.1), x=Math.max(20,U*0.08), y=Math.max(140,H*0.26);
+  ctx.fillStyle='rgba(26,24,22,.88)'; ctx.beginPath(); ctx.roundRect?ctx.roundRect(x-8,y-8,w+16,h+16,10):ctx.rect(x-8,y-8,w+16,h+16); ctx.fill();
+  ctx.fillStyle='#f5cf85'; ctx.fillRect(x,y+h*(1-G.power),w,h*G.power);
+  ctx.strokeStyle='#ece6da'; ctx.lineWidth=3; ctx.strokeRect(x,y,w,h);
+  for(var k=1;k<4;k++){ ctx.fillStyle='rgba(236,230,218,.6)'; ctx.fillRect(x,y+h*k/4,w,2); }
+  var fs=Math.max(18,U*0.08); ctx.fillStyle='#f6eedc'; ctx.font='700 '+fs+'px "Atkinson Hyperlegible", sans-serif'; ctx.textAlign='center'; ctx.fillText('Power',x+w/2,y+h+Math.max(30,U*0.12));
+  var word=G.power<0.01?'':G.power<0.35?'Soft':G.power<0.7?'Medium':G.power<1?'Hard':'Full!';
+  if(word){ ctx.textAlign='left'; var tx=x+w+16, ty=y+h*(1-G.power)+fs*0.35, tw=ctx.measureText(word).width; ctx.fillStyle='rgba(26,24,22,.88)'; ctx.fillRect(tx-8,ty-fs,tw+16,fs+12); ctx.fillStyle='#f5cf85'; ctx.fillText(word,tx,ty); }
+}
+function drawPiles(){
+  // won marbles sit in two little rows: Clara's along the bottom-left, Dad's along the top-right
+  var fs=Math.max(18,U*0.08); ctx.font='700 '+fs+'px "Atkinson Hyperlegible", sans-serif';
+  [['clara',G.clara],['dad',G.dad]].forEach(function(p){
+    var won=G.marbles.filter(function(m){return m.gone && m.owner===p[0];});
+    var top=p[0]==='dad', bx= top? W-U*0.1 : U*0.1+ (W>700?U*0.7:0), by= top? H*0.06+fs : H-U*0.12;
+    var label=(top?'Dad: ':'Clara: ')+p[1];
+    ctx.textAlign=top?'right':'left';
+    var tw=ctx.measureText(label).width; ctx.fillStyle='rgba(26,24,22,.85)'; ctx.fillRect(top?bx-tw-12:bx-8, by-fs-4, tw+20, fs+14);
+    ctx.fillStyle='#f6eedc'; ctx.fillText(label,top?bx:bx+2,by);
+    won.forEach(function(m,i){ var mx=(top? (bx-tw-30-i*MR*U*2.4) : (bx+tw+30+i*MR*U*2.4)), my=by-fs*0.35; drawMarble((mx-CX)/U,(my-CY)/U,MR*0.9,m.c,m.spin,false,m.k); });
+  });
+}
+function draw(){
+  if(!floorCv) floorCv=makeFloor();
+  ctx.setTransform(1,0,0,1,0,0); ctx.drawImage(floorCv,0,0); ctx.setTransform(DPR,0,0,DPR,0,0);
+  if(S.calm!=='on'){ var fl=0.03+Math.sin(G.t*1.7)*0.015+Math.sin(G.t*4.3)*0.008; ctx.fillStyle='rgba(255,214,140,'+fl+')'; ctx.fillRect(0,0,W,H); }
+  G.marbles.forEach(function(m){ if(!m.gone) drawMarble(m.x,m.y,m.r,m.c,m.spin,false,m.k); });
+  drawPiles();
+  if(G.tip && G.tip.t>0 && G.turn==='clara' && G.phase==='aim'){ var tp=G.tip; if(tp.m && !tp.m.gone){ ctx.strokeStyle='rgba(26,24,22,.9)'; ctx.lineWidth=Math.max(7,U*0.035); ctx.beginPath(); ctx.arc(sx(tp.m.x),sy(tp.m.y),(tp.m.r+0.035)*U,0,Math.PI*2); ctx.stroke(); ctx.strokeStyle='#f5cf85'; ctx.lineWidth=Math.max(4,U*0.02); ctx.stroke(); }
+    var s0=shooterPos(G.theta), d0=aimDir(G.theta,tp.aim); ctx.setLineDash([10,10]); ctx.strokeStyle='rgba(245,207,133,.75)'; ctx.lineWidth=Math.max(3,U*0.012); ctx.beginPath(); ctx.moveTo(sx(s0.x),sy(s0.y)); ctx.lineTo(sx(s0.x+d0.x*0.9),sy(s0.y+d0.y*0.9)); ctx.stroke(); ctx.setLineDash([]); }
+  drawGuide();
+  // the two shooters: Clara's swirl, and Dad's (waiting at the top until his turn)
+  if(G.shooter) drawMarble(G.shooter.x,G.shooter.y,SR,null,G.shooter.spin,true,G.shooter.who);
+  if(!(G.shooter&&G.shooter.who==='clara')){ var c=shooterPos(G.theta); drawMarble(c.x,c.y,SR,null,0,true,'clara'); }
+  if(G.turn==='dad' && G.phase==='dadThink'){ var dp=shooterPos(G.dadTheta); drawMarble(dp.x,dp.y,SR,null,0,true,'dad'); ctx.fillStyle='rgba(26,24,22,.85)'; var fs=Math.max(18,U*0.08); ctx.font='700 '+fs+'px "Atkinson Hyperlegible", sans-serif'; ctx.textAlign='center'; var tw=ctx.measureText('Dad').width, lx=Math.max(tw/2+14,Math.min(W-tw/2-14,sx(dp.x*1.18))), ly=Math.max(fs+8,Math.min(H-14,sy(dp.y*1.18)+fs*0.35)); ctx.fillRect(lx-tw/2-10,ly-fs,tw+20,fs+12); ctx.fillStyle='#f6eedc'; ctx.fillText('Dad',lx,ly); }
+  drawBernie();
+  drawMeter();
+}
+
+/* ---------- loop ---------- */
+function frame(ts){ if(!running){ draw(); return; } var dt=Math.max(0,Math.min(0.05,(ts-last)/1000||0)); last=ts; if(!paused) update(dt); draw(); requestAnimationFrame(frame); }
+function start(){
+  $('endVid').pause();
+  newGame(); $('startOver').hidden=true; $('endOver').hidden=true; paused=false; $('pauseBtn').setAttribute('aria-pressed','false'); $('pauseBtn').textContent='Pause';
+  DQ=[]; dadBusyTill=0; $('dadBox').hidden=true;
+  setTrack(LEVEL_MUSIC[S.level]||LEVEL_MUSIC.easy);
+  if(S.music==='on'){ music.currentTime=0; music.volume=0.2; safePlay(music); }
+  play('spill',0.75); caption('[Clara tips the marble bag out. Glass marbles spill and click across the old floorboards]',3800);
+  G.phase='intro'; setTimeout(function(){ if(!running) return; dadSays('start',4200); if(lastPick['dadstart']===0) claraSays('everyTime'); else if(Math.random()<0.6) claraSays('start');
+    if(S.bernie==='start') setTimeout(function(){ if(running && G.phase==='intro') bernieComes(); },900); else { G.phase='aim'; setHint(); } },1600);
+  running=true; last=performance.now(); requestAnimationFrame(frame);
+}
+function end(){
+  running=false; music.volume=S.music==='on'?0.12:0;
+  var won=G.clara>G.dad;
+  DQ=[]; function endTalk(){ if(won){ dadSpeak('win',0,'clara'); setTimeout(function(){ dadSpeak("claraWins"); },3600); } else dadSpeak('dadWins'); }
+  if(!dadBusy()) endTalk(); else setTimeout(endTalk,1500);
+  $('endTitle').textContent= won ? 'Clara wins!' : 'Dad wins this one';
+  $('endScore').textContent='Clara '+G.clara+', Dad '+G.dad;
+  $('endNote').textContent= won ? 'Dad shakes his head, smiling. "She never loses to me." Bernie thumps his tail.' : 'Dad grins and starts gathering the marbles. "Best floor in the house. Rematch?"';
+  // Dad wins: Tina's video of Dad gathering the marbles (silent). Calm motion shows a still.
+  var v=$('endVid'); v.pause(); v.hidden=true; $('endPic').hidden=true;
+  if(!won){ if(S.calm!=='on'){ v.hidden=false; var pv=v.play(); if(pv&&pv.catch) pv.catch(function(){ v.hidden=true; $('endPic').hidden=false; }); } else $('endPic').hidden=false; }
+  $('endOver').hidden=false; $('againBtn').focus();
+}
+function togglePause(){ if(!running) return; paused=!paused; $('pauseBtn').setAttribute('aria-pressed',paused?'true':'false'); $('pauseBtn').textContent=paused?'Paused':'Pause'; if(paused){ music.pause(); if(dadV) dadV.pause(); caption('Paused. Press Pause again to keep playing.',3000);} else { if(S.music==='on') safePlay(music); if(dadV && !dadV.ended) safePlay(dadV); } }
+$('startBtn').addEventListener('click',start);
+$('againBtn').addEventListener('click',start);
+$('pauseBtn').addEventListener('click',togglePause);
+$('setBtn').addEventListener('click',function(){ if(running&&!paused) togglePause(); $('setOver').hidden=false; $('setDone').focus(); });
+$('setDone').addEventListener('click',function(){ $('setOver').hidden=true; });
+
+/* testing helpers: mbShoot(aim, power) flicks from where Clara sits; mbPeek() shows the state */
+window.mbShoot=function(aim,power){ if(!myTurn()) return G?G.phase+'/'+G.turn:'no game'; G.aim=aim||0; flick('clara',G.theta,G.aim,power==null?0.5:power); return 'shot'; };
+window.mbPeek=function(){ return G?{phase:G.phase,turn:G.turn,clara:G.clara,dad:G.dad,left:G.marbles.filter(function(m){return !m.gone;}).length,shots:G.shots,bernie:G.bernie.done}:null; };
+
+resize(); newGame(); apply(); draw();
+})();
+</script>
+<script>/* SMALL-SCREEN start (tools/small_screen.py): Hide panels, Box size, Speech boxes */
+(function(){
+  var r=document.documentElement, P='mb-';
+  function g(k){ try{ return localStorage.getItem(P+k); }catch(e){ return null; } }
+  function s(k,v){ try{ localStorage.setItem(P+k,v); }catch(e){} }
+  var small=(innerWidth<760 || innerHeight<560);
+  var st={ panels:g('panels')||(small?'folded':'open'), box:g('box')||(small?'s':'m'), words:g('wordsbox')||'on' };
+  var bar=document.querySelector('.bar'), btn=document.createElement('button'); btn.id='panelsBtn'; btn.type='button';
+  bar.insertBefore(btn, bar.firstChild);
+  btn.addEventListener('click',function(){ st.panels= st.panels==='folded'?'open':'folded'; s('panels',st.panels); apply(); btn.blur(); });
+  var rows=[['panels','Panels (top bar and buttons)',[['open','Full size'],['folded','Folded small']]],
+            ['box','Speech box size',[['s','Small'],['m','Medium'],['l','Large']]]];
+  if(true) rows.push(['words','Speech boxes',[['on','Show the words'],['off','Voice only']]]);
+  var done=document.getElementById('setDone').closest('.row');
+  rows.forEach(function(row){ var d=document.createElement('div'); d.className='set';
+    d.innerHTML='<b>'+row[1]+'</b><div class="seg" data-k2="'+row[0]+'">'+row[2].map(function(o){ return '<button type="button" data-v2="'+o[0]+'">'+o[1]+'</button>'; }).join('')+'</div>';
+    done.parentNode.insertBefore(d,done);
+    d.querySelector('.seg').addEventListener('click',function(e){ var b=e.target.closest('button'); if(!b) return; st[row[0]]=b.dataset.v2; s(row[0]==='words'?'wordsbox':row[0],b.dataset.v2); apply(); }); });
+  function apply(){
+    r.classList.toggle('compact', st.panels==='folded'); r.setAttribute('data-box',st.box); r.classList.toggle('nobox', st.words==='off');
+    btn.textContent= st.panels==='folded' ? 'Show panels' : 'Hide panels'; btn.setAttribute('aria-expanded', st.panels==='folded'?'false':'true');
+    document.querySelectorAll('.seg[data-k2]').forEach(function(seg){ seg.querySelectorAll('button').forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.v2===st[seg.dataset.k2]?'true':'false'); }); });
+    setTimeout(function(){ dispatchEvent(new Event('resize')); },30);
+  }
+  apply();
+})();
+/* SMALL-SCREEN end */</script>

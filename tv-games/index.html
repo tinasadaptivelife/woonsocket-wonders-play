@@ -1,0 +1,890 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Parlor TV Games</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Playfair+Display:wght@700&display=swap">
+<style>
+/* Layout: one-screen game. Big control bar on top; the Beaumont parlor fills the rest, with the 1979 console TV and the joystick on the rug. */
+:root {
+  --page:#2b2b2b; --panel:#363636; --well:#242424; --ink:#ece6da; --muted:#cfc6b6; --line:#8a8070;
+  --holly:#a8d8b4; --holly-tint:#2f4a3a; --lamp:#f5cf85; --lamp-tint:#4a3f2b; --scrim:#1a1816; --cap:#f6eedc; --focus:#f5cf85;
+  --read:"Atkinson Hyperlegible","Segoe UI",Verdana,sans-serif; --title:"Playfair Display",Georgia,serif;
+  --scale:1; color-scheme: dark;
+}
+:root[data-look="sand"] { --page:#d6ccb5; --panel:#e4dac4; --well:#cbbfa4; --ink:#111111; --muted:#3a332b; --line:#4a4038; --holly:#1f4a30; --holly-tint:#cfe0cc; --lamp:#6b4510; --lamp-tint:#f3ddae; --focus:#1f4a30; color-scheme: light; }
+:root[data-look="light"] { --page:#e9e2d2; --panel:#f1ebdd; --well:#ddd4c0; --ink:#111111; --muted:#3a332b; --line:#4a4038; --holly:#1f4a30; --holly-tint:#cfe0cc; --lamp:#6b4510; --lamp-tint:#f3ddae; --focus:#1f4a30; color-scheme: light; }
+:root[data-look="contrast"] { --page:#c9c9c9; --panel:#d9d9d9; --well:#bdbdbd; --ink:#000; --muted:#1a1a1a; --line:#000; --holly:#0e3320; --holly-tint:#b8d4bc; --lamp:#4a2e00; --lamp-tint:#e9cf92; --focus:#000; color-scheme: light; }
+html, body { height:100%; }
+html { font-size: calc(20px * var(--scale)); }
+body { margin:0; background:var(--page); color:var(--ink); font:400 1rem/1.5 var(--read); overflow:hidden; }
+body::before { content:""; position:fixed; inset:0 0 auto; height:env(safe-area-inset-top,0px); z-index:10; background:var(--panel); }
+.app { height:100%; display:grid; grid-template-rows:auto 1fr; }
+.bar { background:var(--panel); border-bottom:3px solid var(--line); padding-block:8px; padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center; }
+.home { font-weight:700; font-size:1.05rem; color:var(--ink); background:var(--well); border:3px solid var(--line); border-radius:12px; padding:6px 12px; text-decoration:none; }
+.home:focus-visible { outline:4px solid var(--focus); outline-offset:2px; }
+.bar h1 { margin:0 auto 0 0; font:700 1.3rem/1.1 var(--title); color:var(--holly); }
+.score { font-weight:700; font-size:1.1rem; font-variant-numeric:tabular-nums; }
+button { font:700 0.9rem/1.2 var(--read); color:var(--ink); background:var(--well); border:3px solid var(--line); border-radius:12px; min-height:52px; min-width:52px; padding:0 16px; cursor:pointer; }
+button.primary { background:var(--holly-tint); border-color:var(--holly); }
+button[aria-pressed="true"] { background:var(--holly-tint); border-color:var(--holly); }
+button[aria-pressed="true"]::before { content:"\2713  "; }
+button:focus-visible { outline:3px solid var(--focus); outline-offset:3px; }
+.stage { position:relative; min-height:0; }
+canvas { display:block; width:100%; height:100%; touch-action:none; }
+.cap { position:absolute; left:50%; bottom:calc(16px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%); max-width:min(900px,calc(100% - 32px)); background:var(--scrim); color:var(--cap); font:700 1.1rem/1.45 var(--read); padding:12px 24px; border-radius:12px; text-align:center; }
+.touch { position:absolute; right:max(16px,env(safe-area-inset-right,0px)); bottom:calc(90px + env(safe-area-inset-bottom,0px)); display:none; flex-direction:column; gap:12px; }
+.touch button { width:96px; height:80px; font-size:1.1rem; }
+.touch { display:flex; }
+.over { position:absolute; inset:0; display:grid; place-items:safe center; padding:24px max(16px,env(safe-area-inset-left,0px)); background:rgba(20,18,16,.55); overflow:auto; }
+.over[hidden] { display:none; }
+.sheet { width:min(820px,100%); background:var(--panel); border:3px solid var(--line); border-radius:18px; overflow:hidden; display:grid; }
+.sheet img.art { width:100%; aspect-ratio:16/8; object-fit:cover; display:block; border-bottom:3px solid var(--line); }
+.sheet .in { padding:24px; display:grid; gap:14px; }
+.sheet h2 { margin:0; font:700 2rem/1.1 var(--title); color:var(--holly); text-wrap:balance; }
+.sheet p { margin:0; max-width:62ch; }
+.sheet ul { margin:0; padding-left:1.2em; display:grid; gap:6px; }
+.row { display:flex; flex-wrap:wrap; gap:12px; }
+.set { display:grid; gap:8px; padding:12px; background:var(--well); border-radius:12px; }
+.seg { display:flex; flex-wrap:wrap; gap:8px; }
+.big { font-size:1.6rem; font-weight:700; color:var(--lamp); }
+.note { color:var(--muted); }
+.gname { font:700 1.2rem/1.2 var(--title); color:var(--holly); }
+.set p { margin:0; }
+.touch.wide { flex-direction:row; flex-wrap:wrap; justify-content:flex-end; max-width:calc(100% - 32px); }
+.touch button[hidden] { display:none; }
+.clara { position:absolute; top:14px; right:max(14px,env(safe-area-inset-right,0px)); max-width:min(460px,calc(100% - 28px)); background:var(--panel); border:3px solid var(--line); border-radius:16px; padding:10px 16px; z-index:3; }
+.clara[hidden] { display:none; }
+.clara { display:flex; gap:12px; align-items:center; }
+.clara[hidden] { display:none; }
+.spk { width:72px; height:72px; border-radius:12px; border:3px solid var(--line); object-fit:cover; flex:none; }
+.spk[hidden] { display:none; }
+
+.clara b { display:block; color:#9fc0f0; font-size:1rem; }
+:root[data-look] .clara b { color:#1d3f78; }
+.clara p { margin:0; font-size:1.1rem; line-height:1.4; }
+/* SMALL-SCREEN start (tools/small_screen.py) */
+#panelsBtn { white-space:nowrap; }
+:root.compact .bar { padding-block:4px; gap:6px 10px; }
+:root.compact .bar > :not(#panelsBtn):not(#pauseBtn):not(.score) { display:none !important; }
+:root.compact .bar button { min-height:44px; padding:0 12px; font-size:0.8rem; }
+:root.compact .bar .score { font-size:0.85rem; margin-right:auto; }
+:root.compact .foot { padding-block:4px calc(4px + env(safe-area-inset-bottom,0px)); gap:6px; }
+:root.compact .foot button { min-height:44px; min-width:44px; padding:0 10px; font-size:0.8rem; }
+:root.compact .foot .shoot { min-width:120px; min-height:48px; }
+:root.compact .foot .hint { display:none; }
+:root.compact .dad,:root.compact .talk,:root.compact .joe,:root.compact .clara,:root.compact .say { top:auto !important; bottom:8px; left:8px; right:8px; max-width:none; padding:6px 12px; border-radius:12px; gap:8px; }
+:root.compact .dad img,:root.compact .talk img,:root.compact .joe img,:root.compact .clara img,:root.compact .say img { display:none; }
+:root.compact .dad small,:root.compact .talk small,:root.compact .joe small,:root.compact .clara small,:root.compact .say small { display:none; }
+:root.compact .cap { bottom:auto; top:8px; }
+:root[data-box="s"] .dad p,:root[data-box="s"] .talk p,:root[data-box="s"] .joe p,:root[data-box="s"] .clara p,:root[data-box="s"] .say p, :root[data-box="s"] .cap { font-size:0.85rem; line-height:1.35; }
+:root[data-box="s"] .dad b,:root[data-box="s"] .talk b,:root[data-box="s"] .joe b,:root[data-box="s"] .clara b,:root[data-box="s"] .say b { font-size:0.8rem; }
+:root[data-box="l"] .dad p,:root[data-box="l"] .talk p,:root[data-box="l"] .joe p,:root[data-box="l"] .clara p,:root[data-box="l"] .say p, :root[data-box="l"] .cap { font-size:1.3rem; }
+:root.nobox .dad,:root.nobox .talk,:root.nobox .joe,:root.nobox .clara,:root.nobox .say { display:none !important; }
+/* SMALL-SCREEN end */
+</style>
+
+<div class="app">
+  <header class="bar">
+    <a class="home" id="homeLink" href="../" hidden>&larr; All games</a>
+    <h1>Games on the Parlor TV</h1>
+    <span class="score" id="scoreText" aria-live="polite">You 0 · Computer 0</span>
+    <button id="pauseBtn" aria-pressed="false">Pause</button>
+    <button id="setBtn">Settings</button>
+  </header>
+  <div class="stage" id="stage">
+    <canvas id="cv" tabindex="0" aria-label="The Beaumont parlor at night: a wooden console TV shows a game, and a joystick sits on the rug"></canvas>
+    <div class="clara" id="claraBox" hidden><img class="spk" src="art/clara-face.jpg" alt="Clara, chestnut braids and rosy cheeks, from Tina’s Storykeeper film"><div><b>Clara</b><p id="claraLine"></p></div></div>
+    <p class="cap" id="cap" hidden></p>
+    <div class="touch" id="touch"><button id="upBtn" aria-label="Paddle up">Up</button><button id="downBtn" aria-label="Paddle down">Down</button><button id="fireBtn" aria-label="Throw a snowball" hidden>Throw</button><button id="launchBtn" aria-label="Launch the ball" hidden>Launch</button><button id="lBtn" aria-label="Walk left" hidden>Left</button><button id="rBtn" aria-label="Walk right" hidden>Right</button></div>
+
+    <div class="over" id="startOver">
+      <div class="sheet">
+        <img class="art" id="startArt" alt="" hidden>
+        <div class="in">
+          <h2>Games on the Parlor TV</h2>
+          <p>It is 1979, the radiator is ticking, and the popcorn is a little too salty. Clara pulls the joystick close to the TV. Pick a game.</p>
+          <div class="set"><b>Difficulty</b><div class="seg" data-key="speed"><button data-v="gentle">Easy</button><button data-v="normal">Medium</button><button data-v="lively">Hard</button></div>
+            <b>Start at level</b><div class="seg" data-key="lvl"><button data-v="1">1</button><button data-v="2">2</button><button data-v="3">3</button><button data-v="4">4</button><button data-v="5">5</button></div>
+            <p class="note">Every game has 5 levels. Each level is a little faster and trickier. Clear one to go on to the next.</p></div>
+          <div class="set"><span class="gname">Paddle Ball</span><p>Bounce the ball past the other paddle. First to 7 points.</p>
+            <div class="row"><button class="primary" id="oneBtn">Play the computer</button><button id="twoBtn">Two players</button></div></div>
+          <div class="set"><span class="gname">Mill Bricks</span><p>Bounce the ball up and knock every brick out of the old mill wall.</p>
+            <div class="row"><button class="primary" id="bricksBtn">Play Mill Bricks</button></div></div>
+          <div class="set"><span class="gname">Snowflake Storm</span><p>Rows of snowflakes drift down toward the porch. Burst them all with snowballs before they land.</p>
+            <div class="row"><button class="primary" id="snowBtn">Play Snowflake Storm</button></div></div>
+          <div class="set"><span class="gname">Whiskers Pinball</span><p>A river pinball table. Bounce off the river stones, pick all four enchanted raspberries, and splash into Whiskers' moon pool. Pick every raspberry to go up a level.</p>
+            <div class="row"><button class="primary" id="pinBtn">Play Whiskers Pinball</button></div></div>
+          <div class="set"><span class="gname">Franky's Candy Maze</span><p>Collect every sugar drop between the candy jars in Bonbons du Temps Passé. Wisps of forgetting fog drift after you. A Hope Chocolate makes the fog fade and float away.</p>
+            <div class="row"><button class="primary" id="mazeBtn">Play Franky's Candy Maze</button></div></div>
+          <ul>
+            <li><b>Move:</b> your mouse or trackpad over the room, the arrow keys, the big buttons, or a joystick or game controller. In the Candy Maze, Clara keeps walking and turns at the next corner you choose.</li>
+            <li><b>Snowballs</b> throw by themselves (Auto throw in Settings). You can also press the <b>space bar</b> or the <b>Throw</b> button.</li>
+            <li><b>Pinball flippers:</b> left arrow (or Z) and right arrow (or M), the Left and Right buttons, or click the left or right half of the room. The ball launches by itself, or press the space bar.</li>
+            <li>Paddle Ball two players: the left player uses <b>W and S</b>, the right player uses the <b>arrow keys</b>.</li>
+          </ul>
+          <p class="note">These are original games made for The Woonsocket Wonders.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="over" id="endOver" hidden>
+      <div class="sheet"><div class="in">
+        <h2 id="endTitle">Good game!</h2>
+        <p class="big" id="endScore"></p>
+        <p id="endNote"></p>
+        <div class="row"><button class="primary" id="againBtn">Play again</button><button id="menuBtn">Choose a game</button></div>
+      </div></div>
+    </div>
+
+    <div class="over" id="setOver" hidden>
+      <div class="sheet"><div class="in">
+        <h2>Settings</h2>
+        <div class="set"><b>Look</b><div class="seg" data-key="look"><button data-v="dusk">Dark soft</button><button data-v="sand">Dim sand</button><button data-v="light">Light</button><button data-v="contrast">Extra contrast</button></div></div>
+        <div class="set"><b>Text size</b><div class="seg" data-key="size"><button data-v="1">Large</button><button data-v="1.2">Larger</button><button data-v="1.4">Largest</button></div></div>
+        <div class="set"><b>Difficulty</b><div class="seg" data-key="speed"><button data-v="gentle">Easy</button><button data-v="normal">Medium</button><button data-v="lively">Hard</button></div></div>
+        <div class="set"><b>Paddle size</b><div class="seg" data-key="paddle"><button data-v="big">Big</button><button data-v="normal">Normal</button></div></div>
+        <div class="set"><b>Auto throw (Snowflake Storm)</b><div class="seg" data-key="auto"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="set"><b>Music</b><div class="seg" data-key="music"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="set"><b>Sounds</b><div class="seg" data-key="sfx"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="set"><b>Clara's voice</b><div class="seg" data-key="voice"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="set"><b>Sound captions</b><div class="seg" data-key="caps"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="row"><button class="primary" id="setDone">Done</button></div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+document.getElementById('homeLink').hidden=false;
+var $=function(id){return document.getElementById(id);}, root=document.documentElement;
+function lget(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+function lset(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+
+/* ---------- settings ---------- */
+var S={ music: lget('tv-music')||'on', voice: lget('tv-voice')||'on', look:lget('tv-look')||'dusk', size:lget('tv-size')||'1', speed:lget('tv-speed')||'gentle', paddle:lget('tv-paddle')||'big', sfx:lget('tv-sfx')||'on', caps:lget('tv-caps')||'on', auto:lget('tv-auto')||'on', lvl:lget('tv-lvl')||'1' };
+/* levels (Tina, 2026-11-17): every game has 5 levels; each level a little faster and trickier */
+var LEVEL=1, MAXL=5, NEXT=false;
+function lvlMul(){ return 1+0.12*(LEVEL-1); }
+function apply(){
+  if(typeof tvMusic!=='undefined'){ if(S.music!=='on') tvMusic.pause(); else if(running && !paused && tvMusic.getAttribute('src')){ var mp=tvMusic.play(); if(mp&&mp.catch) mp.catch(function(){}); } }
+  if(S.look==='dusk') root.removeAttribute('data-look'); else root.setAttribute('data-look',S.look);
+  root.style.setProperty('--scale',S.size);
+  document.querySelectorAll('.seg[data-key]').forEach(function(seg){ seg.querySelectorAll('button').forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.v===S[seg.dataset.key]?'true':'false'); }); });
+  if(S.caps!=='on') $('cap').hidden=true;
+  if(G && G.p1){ G.p1.h=paddleH(); G.p2.h= mode===1 ? 16 : paddleH(); }
+  resize();
+}
+document.querySelectorAll('.seg[data-key]').forEach(function(seg){ seg.addEventListener('click',function(e){ var b=e.target.closest('button'); if(!b) return; S[seg.dataset.key]=b.dataset.v; lset('tv-'+seg.dataset.key,b.dataset.v); apply(); }); });
+
+/* ---------- sound: bleeps made in code, like a 1970s console ---------- */
+var AC=null;
+function beep(freq, dur, type, vol, slide){
+  if(S.sfx!=='on') return;
+  try{
+    if(!AC) AC=new (window.AudioContext||window.webkitAudioContext)();
+    var t=AC.currentTime, o=AC.createOscillator(), g=AC.createGain();
+    o.type=type||'square'; o.frequency.setValueAtTime(freq,t); if(slide) o.frequency.linearRampToValueAtTime(slide,t+dur);
+    g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(vol||0.08,t+0.01); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+dur+0.02);
+  }catch(e){}
+}
+var capT=null;
+function caption(t,ms){ if(S.caps!=='on') return; var c=$('cap'); c.textContent=t; c.hidden=false; clearTimeout(capT); capT=setTimeout(function(){c.hidden=true;},ms||2200); }
+/* ---------- music: Tina's songs, one for each TV game (2026-11-18). A game without its song yet plays only bleeps. ---------- */
+var GAME_MUSIC={ pong:'audio/music-paddle-ball.mp3', bricks:'audio/music-mill-bricks.mp3', snow:'audio/music-snowflake-storm.mp3', maze:'audio/music-candy-maze.mp3', pin:'audio/music-whiskers-pinball.mp3' };
+var tvMusic=new Audio(); tvMusic.loop=true; tvMusic.volume=0.16;
+function gameMusic(kind){ var src=GAME_MUSIC[kind]; tvMusic.pause(); if(!src) return; if(tvMusic.getAttribute('src')!==src){ tvMusic.src=src; } tvMusic.currentTime=0; if(S.music==='on'){ var p=tvMusic.play(); if(p&&p.catch) p.catch(function(){}); } }
+function musicStop(){ tvMusic.pause(); }
+var CLARA_SAYS={"start": ["Okay, TV. Let's see what you've got.", "Just one more level before supper."], "level": ["Next level!", "Ha! Too easy."], "lose": ["No, no, no, no!", "That one doesn't count."], "win": ["I beat it! Somebody come see!"], "pinball": ["Go, Whiskers, go!"], "candy": ["Sorry, Franky. Just one more gumdrop."], "snow": ["Snowflakes don't stand a chance."]};
+/* ---------- Clara talks: her podcast voice (Chatterbox), audio/voice/clara-<kind>-<n>.mp3, words in her box. A line never cuts another off. ---------- */
+var clV=null, clTill=0, clPick={}, clT=null;
+function claraSay(kind,chance){
+  if(chance!=null && Math.random()>chance) return;
+  if((clV && !clV.ended && !clV.paused) || Date.now()<clTill) return;
+  var list=CLARA_SAYS[kind]; if(!list) return;
+  var i=Math.floor(Math.random()*list.length); if(list.length>1 && i===clPick[kind]) i=(i+1)%list.length; clPick[kind]=i;
+  var t=list[i], ms=1600+t.split(/\s+/).length*450; clTill=Date.now()+ms;
+  $('claraLine').textContent=t; $('claraBox').hidden=false; clearTimeout(clT); clT=setTimeout(function(){ $('claraBox').hidden=true; },ms);
+  if(S.voice!=='off'){ var v=new Audio('audio/voice/clara-'+kind+'-'+(i+1)+'.mp3'); clV=v;
+    v.addEventListener('loadedmetadata',function(){ if(v===clV && isFinite(v.duration)){ var full=Math.max(ms,v.duration*1000+900); clTill=Date.now()+full; clearTimeout(clT); clT=setTimeout(function(){ $('claraBox').hidden=true; },full); } });
+    var p=v.play(); if(p&&p.catch) p.catch(function(){}); }
+}
+
+/* ---------- optional painted art from Google Flow ---------- */
+var IMG={};
+['parlor-tv','joystick'].forEach(function(n){ var i=new Image(); i.onload=function(){ IMG[n]=i; if(n==='parlor-tv'){ $('startArt').src=i.src; $('startArt').hidden=false; $('startArt').alt='A cozy 1979 parlor at night with a wooden console TV and a joystick on the rug'; } }; i.src='art/'+n+(n==='parlor-tv'?'.jpg':'.png'); });
+
+/* ---------- the little TV screen: 160 x 100 chunky pixels ---------- */
+var SW=160, SH=100, scr=document.createElement('canvas'); scr.width=SW; scr.height=SH; var sx=scr.getContext('2d');
+var FG='#efe6cf', BG='#141611';
+var DIG={0:'111101101101111',1:'010110010010111',2:'111001111100111',3:'111001111001111',4:'101101111001001',5:'111100111001111',6:'111100111101111',7:'111001001001001',8:'111101111101111',9:'111101111001111'};
+function digit(n,x,y,s){ var d=DIG[n]; for(var i=0;i<15;i++) if(d[i]==='1') sx.fillRect(x+(i%3)*s, y+Math.floor(i/3)*s, s, s); }
+
+/* ---------- game state ---------- */
+var G=null, mode=1, running=false, paused=false, last=0, joyTilt=0, joyTilt2=0, pressFlash=0;
+function paddleH(){ return S.paddle==='big'?26:18; }
+function speedBase(){ return ({gentle:55, normal:75, lively:100}[S.speed]||55)*lvlMul(); }
+function newGame(m){
+  mode=m;
+  G={ p1:{y:SH/2,h:paddleH(),score:0}, p2:{y:SH/2,h:m===1?16:paddleH(),score:0}, ball:{x:SW/2,y:SH/2,vx:0,vy:0}, wait:1.2, serveTo:-1, over:false, hits:0, aimErr:0 };
+  updateScore();
+}
+function serve(){
+  var b=G.ball, sp=speedBase(); b.x=SW/2; b.y=SH/2; var a=(Math.random()*0.8-0.4);
+  b.vx=Math.cos(a)*sp*G.serveTo; b.vy=Math.sin(a)*sp; G.hits=0;
+}
+function names(){ return mode===1 ? ['You','Computer'] : ['Left player','Right player']; }
+function updateScore(){ var lv= (game==='pong'&&mode===2) ? '' : 'Level '+LEVEL+' · '; if(game!=='pong'){ $('scoreText').textContent=lv+'Score '+G.score+' · '+(game==='pin'?'Balls ':'Lives ')+G.lives; return; } var n=names(); $('scoreText').textContent=lv+n[0]+' '+G.p1.score+' · '+n[1]+' '+G.p2.score; }
+
+/* ---------- input ---------- */
+var keys={}, drag=null, touchDir=0;
+addEventListener('keydown',function(e){ if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].indexOf(e.key)>-1 && running) e.preventDefault(); keys[e.key.length===1?e.key.toLowerCase():e.key]=true; if((e.key==='p'||e.key==='P'||e.key==='Escape')&&running) togglePause(); });
+addEventListener('keyup',function(e){ keys[e.key.length===1?e.key.toLowerCase():e.key]=false; });
+var cv=$('cv'), ctx=cv.getContext('2d'), W=800, H=600, DPR=1, TV={x:0,y:0,w:0,h:0,sx:0,sy:0,sw:0,sh:0}, JOY={x:0,y:0,s:1};
+// the paddle follows the mouse or trackpad anywhere over the room; no clicking needed
+var mouseY=null, mouseX=null, lastMouse=0, mouseDown=false, fireHeld=false, touchH=0;
+cv.addEventListener('pointermove',function(e){ mouseY=e.offsetY; mouseX=e.offsetX; lastMouse=performance.now(); });
+cv.addEventListener('pointerup',function(){ mouseDown=false; });
+cv.addEventListener('pointerdown',function(e){ mouseDown=true; mouseX=e.offsetX; mouseY=e.offsetY; lastMouse=performance.now(); try{ cv.setPointerCapture(e.pointerId); }catch(_){} cv.focus(); });
+cv.addEventListener('pointerleave',function(){ mouseY=null; mouseX=null; mouseDown=false; });
+function hold(id,d){ var b=$(id); b.addEventListener('pointerdown',function(e){e.preventDefault();touchDir=d;}); ['pointerup','pointerleave','pointercancel'].forEach(function(ev){ b.addEventListener(ev,function(){ if(touchDir===d) touchDir=0; }); }); }
+hold('upBtn',-1); hold('downBtn',1);
+['lBtn','rBtn'].forEach(function(id,i){ var b=$(id), d=i?1:-1; b.addEventListener('pointerdown',function(e){ e.preventDefault(); touchH=d; }); ['pointerup','pointerleave','pointercancel'].forEach(function(ev){ b.addEventListener(ev,function(){ if(touchH===d) touchH=0; }); }); });
+(function(){ var f=$('launchBtn'); f.addEventListener('pointerdown',function(e){ e.preventDefault(); launchHeld=true; }); ['pointerup','pointerleave','pointercancel'].forEach(function(ev){ f.addEventListener(ev,function(){ launchHeld=false; }); }); })();
+(function(){ var f=$('fireBtn'); f.addEventListener('pointerdown',function(e){ e.preventDefault(); fireHeld=true; }); ['pointerup','pointerleave','pointercancel'].forEach(function(ev){ f.addEventListener(ev,function(){ fireHeld=false; }); }); })();
+function padAxis(i){ var pads=navigator.getGamepads?navigator.getGamepads():[]; var p=pads&&pads[i]; if(!p) return 0; var v=p.axes[1]||0; if(p.buttons[12]&&p.buttons[12].pressed) v=-1; if(p.buttons[13]&&p.buttons[13].pressed) v=1; return Math.abs(v)<0.2?0:v; }
+
+/* ---------- update ---------- */
+function update(dt){ if(game==='pin') return updPin(dt); if(game==='maze') return updMaze(dt); if(game==='bricks') return updBricks(dt); if(game==='snow') return updSnow(dt); updPong(dt); }
+function updPong(dt){
+  var pv=95; // paddle speed in screen pixels per second
+  // left paddle: the player (W/S, arrows in one-player, drag, gamepad 1)
+  var d1 = (keys.w?-1:0)+(keys.s?1:0) + touchDir + padAxis(0);
+  if(mode===1) d1 += (keys.ArrowUp?-1:0)+(keys.ArrowDown?1:0);
+  var keyed = d1!==0;
+  if(!keyed && mouseY!==null && performance.now()-lastMouse<4000){ var target=(mouseY-TV.sy)/TV.sh*SH; d1=Math.max(-1,Math.min(1,(target-G.p1.y)/4)); }
+  d1=Math.max(-1,Math.min(1,d1));
+  G.p1.y+=d1*pv*dt; joyTilt+= (d1-joyTilt)*Math.min(1,dt*14);
+  // right paddle: computer or second player
+  var d2=0;
+  if(mode===2){ d2=(keys.ArrowUp?-1:0)+(keys.ArrowDown?1:0)+padAxis(1); d2=Math.max(-1,Math.min(1,d2)); }
+  else {
+    var b=G.ball, wake={gentle:0.55,normal:0.4,lively:0.25}[S.speed]||0.55;
+    var aim = (b.vx>0 && b.x>SW*wake) ? b.y+G.aimErr : SH/2, lag=Math.min(1,({gentle:0.38,normal:0.55,lively:0.8}[S.speed]||0.38)*(1+0.1*(LEVEL-1)));
+    var diff=aim-G.p2.y; d2=Math.max(-lag,Math.min(lag,diff/8));
+  }
+  G.p2.y+=d2*pv*dt; joyTilt2+=(d2-joyTilt2)*Math.min(1,dt*14);
+  [G.p1,G.p2].forEach(function(p){ p.y=Math.max(p.h/2+3,Math.min(SH-3-p.h/2,p.y)); });
+
+  if(G.over) return;
+  if(G.wait>0){ G.wait-=dt; if(G.wait<=0) serve(); return; }
+  var ball=G.ball; ball.x+=ball.vx*dt; ball.y+=ball.vy*dt;
+  if(ball.y<4){ ball.y=4; ball.vy=Math.abs(ball.vy); beep(240,0.05,'square',0.05); }
+  if(ball.y>SH-4){ ball.y=SH-4; ball.vy=-Math.abs(ball.vy); beep(240,0.05,'square',0.05); }
+  // paddles at x=8 and x=SW-8
+  hitPaddle(G.p1, 10, 1); hitPaddle(G.p2, SW-10, -1);
+  if(ball.x<-4) point(2); else if(ball.x>SW+4) point(1);
+}
+function hitPaddle(p,px,dir){
+  var b=G.ball; if((dir===1 && b.vx<0 && b.x<=px+2 && b.x>=px-3) || (dir===-1 && b.vx>0 && b.x>=px-2 && b.x<=px+3)){
+    var off=(b.y-p.y)/(p.h/2); if(Math.abs(off)<=1.15){
+      G.hits++; var sp=Math.min(speedBase()*1.9, Math.hypot(b.vx,b.vy)*1.04);
+      var ang=off*0.85; b.vx=Math.cos(ang)*sp*dir; b.vy=Math.sin(ang)*sp; b.x=px+dir*3;
+      beep(480,0.06,'square',0.07); pressFlash=0.15;
+      if(dir===1) G.aimErr=(Math.random()*2-1)*({gentle:20,normal:11,lively:4}[S.speed]||14)/(1+0.15*(LEVEL-1));
+    }
+  }
+}
+function point(who){
+  var p= who===1?G.p1:G.p2; p.score++; updateScore();
+  beep(who===1?660:330,0.25,'square',0.07, who===1?990:220);
+  var n=names(); caption('[Ding] Point to '+(who===1?n[0].toLowerCase()==='you'?'you':n[0]:n[1])+'. '+n[0]+' '+G.p1.score+', '+n[1]+' '+G.p2.score+'.',2400);
+  G.serveTo = who===1?1:-1; G.wait=1.3; G.ball.vx=G.ball.vy=0; G.ball.x=-50;
+  if(p.score>=7){ G.over=true; setTimeout(end,1100); }
+}
+function end(){
+  musicStop();
+  running=false; if(game!=='pong') return endArcade(); var n=names(), a=G.p1.score, b=G.p2.score;
+  if(mode===1 && a>b && LEVEL>=MAXL) claraSay('win');
+  if(mode===1){ $('endTitle').textContent = a>b ? (LEVEL<MAXL?'Level '+LEVEL+' won!':'You beat all 5 levels!') : 'Good game!';
+    $('endNote').textContent = a>b ? (LEVEL<MAXL?'Clara cheers so loud that Bernie looks up from the rug. The computer gets a little quicker on the next level.':'Clara cheers so loud that Bernie looks up from the rug. Dad says that was the best game of the night.') : 'The computer got there first this time. Try Easy or Big paddles in Settings.';
+    setNext(a>b); }
+  else { $('endTitle').textContent=(a>b?n[0]:n[1])+' wins!'; $('endNote').textContent='Best of three? Dad says the popcorn is still warm.'; }
+  if(mode===2) setNext(false);
+  $('endScore').textContent=n[0]+' '+a+', '+n[1]+' '+b;
+  beep(523,0.12,'square',0.06); setTimeout(function(){beep(659,0.12,'square',0.06);},140); setTimeout(function(){beep(784,0.25,'square',0.06);},280);
+  $('endOver').hidden=false; $('againBtn').focus();
+}
+
+
+/* ================= Mill Bricks and Snowflake Storm (original games for the same TV) ================= */
+var game='pong';
+function padAxisX(i){ var pads=navigator.getGamepads?navigator.getGamepads():[]; var p=pads&&pads[i]; if(!p) return 0; var v=p.axes[0]||0; if(p.buttons[14]&&p.buttons[14].pressed) v=-1; if(p.buttons[15]&&p.buttons[15].pressed) v=1; return Math.abs(v)<0.2?0:v; }
+function padFire(i){ var pads=navigator.getGamepads?navigator.getGamepads():[]; var p=pads&&pads[i]; return !!(p&&p.buttons[0]&&p.buttons[0].pressed); }
+// move left and right: keys and buttons first, otherwise follow the mouse or trackpad
+function steerX(cur, speed, dt, half){
+  var d=(keys.ArrowLeft||keys.a?-1:0)+(keys.ArrowRight||keys.d?1:0)+touchDir+padAxisX(0);
+  if(d===0 && mouseX!==null && performance.now()-lastMouse<4000){ var target=(mouseX-TV.sx)/TV.sw*SW; d=(target-cur)/4; }
+  d=Math.max(-1,Math.min(1,d));
+  joyTilt+=(d-joyTilt)*Math.min(1,dt*14);
+  return Math.max(half+2,Math.min(SW-2-half,cur+d*speed*dt));
+}
+function livesFor(){ return S.speed==='gentle'?5:3; }
+function num(n,x,y,s){ var t=String(n); for(var i=0;i<t.length;i++) digit(+t[i], x+i*4*s, y, s); }
+function lifeDots(x,y){ for(var i=0;i<G.lives;i++) sx.fillRect(x-i*5,y,3,3); }
+var parts=[];
+function puff(x,y,n,c){ for(var i=0;i<n;i++){ var a=Math.random()*Math.PI*2, v=10+Math.random()*30; parts.push({x:x,y:y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,t:0.35+Math.random()*0.3,c:c}); } }
+function stepParts(dt){ for(var i=parts.length-1;i>=0;i--){ var q=parts[i]; q.t-=dt; q.x+=q.vx*dt; q.y+=q.vy*dt; if(q.t<=0) parts.splice(i,1); } }
+function drawParts(){ parts.forEach(function(q){ sx.fillStyle=q.c; sx.fillRect(Math.round(q.x),Math.round(q.y),1,1); }); }
+
+/* ----- Mill Bricks ----- */
+var BRICK_COLORS=['#c9604a','#d9825a','#e3a46a','#e8c27a','#efe6cf'];
+// level layouts: 1 the full wall, 2 a checker, 3 mill windows, 4 a staircase, 5 the full wall with tough bricks
+function brickHere(L,r,c){ if(L===2) return (r+c)%2===0||r===0; if(L===3) return !((c===1||c===2||c===5||c===6)&&(r===2||r===3)); if(L===4) return c>=r && c<=7-r+4 || r===0; return true; }
+function newBricks(keep){
+  var list=[], L=LEVEL; for(var r=0;r<5;r++) for(var c=0;c<8;c++) if(brickHere(L,r,c)) list.push({x:3+c*19.5, y:14+r*6, w:17, h:4, r:r, on:true, hits:(L>=3 && r<=(L-3)) || (L===5 && r<2) ? 2 : 1});
+  G={ kind:'bricks', px:SW/2, pw:S.paddle==='big'?30:22, ball:{x:SW/2,y:SH-9,vx:0,vy:0}, bricks:list, left:list.length, score:0, lives:livesFor(), wait:1.3, over:false, won:false };
+}
+function brickServe(){ var sp=speedBase()*1.05, a=-Math.PI/2+(Math.random()*0.8-0.4); G.ball.vx=Math.cos(a)*sp; G.ball.vy=Math.sin(a)*sp; }
+function updBricks(dt){
+  G.pw=S.paddle==='big'?30:22; G.px=steerX(G.px,115,dt,G.pw/2); stepParts(dt);
+  if(G.over) return;
+  var b=G.ball, PY=SH-6;
+  if(G.wait>0){ b.x=G.px; b.y=PY-3; G.wait-=dt; if(G.wait<=0) brickServe(); return; }
+  for(var i=0;i<3;i++){
+    var h=dt/3, ox=b.x; b.x+=b.vx*h; b.y+=b.vy*h;
+    if(b.x<2){ b.x=2; b.vx=Math.abs(b.vx); beep(240,0.04,'square',0.04); }
+    if(b.x>SW-2){ b.x=SW-2; b.vx=-Math.abs(b.vx); beep(240,0.04,'square',0.04); }
+    if(b.y<11){ b.y=11; b.vy=Math.abs(b.vy); beep(240,0.04,'square',0.04); }
+    if(b.vy>0 && b.y>=PY-2 && b.y<=PY+2 && Math.abs(b.x-G.px)<=G.pw/2+1.5){
+      var off=(b.x-G.px)/(G.pw/2), sp=Math.min(speedBase()*1.7, Math.hypot(b.vx,b.vy)*1.02), ang=-Math.PI/2+Math.max(-1,Math.min(1,off))*1.0; if(Math.abs(off)<0.2) ang+=(Math.random()<.5?-1:1)*(0.25+Math.random()*0.15);  // never straight up and down
+      b.vx=Math.cos(ang)*sp; b.vy=Math.sin(ang)*sp; b.y=PY-2; beep(480,0.06,'square',0.07); pressFlash=0.15;
+    }
+    for(var k=0;k<G.bricks.length;k++){ var br=G.bricks[k]; if(!br.on) continue;
+      if(b.x>=br.x-1.5 && b.x<=br.x+br.w+1.5 && b.y>=br.y-1.5 && b.y<=br.y+br.h+1.5){
+        br.hits--; if(br.hits>0){ G.score+=5; updateScore(); if(ox<br.x-1.5 || ox>br.x+br.w+1.5) b.vx=-b.vx; else b.vy=-b.vy; beep(200,0.06,'square',0.06); puff(br.x+br.w/2,br.y+2,4,'#8a8070'); break; }
+        br.on=false; G.left--; G.score+=(5-br.r)*10; updateScore();
+        if(ox<br.x-1.5 || ox>br.x+br.w+1.5) b.vx=-b.vx; else b.vy=-b.vy; if(Math.abs(b.vx)<Math.abs(b.vy)*0.2){ b.vx=(b.vx<0?-1:1)*Math.abs(b.vy)*0.25; }
+        beep(300+(4-br.r)*90,0.06,'square',0.06); puff(br.x+br.w/2,br.y+2,8,BRICK_COLORS[br.r]);
+        if(G.left===1) caption('[Bleep] One brick left!',2000);
+        if(G.left===0){ G.over=true; G.won=true; caption('[Happy bleeps] The whole wall is down!',2400); setTimeout(end,1200); }
+        break;
+      }
+    }
+  }
+  if(b.y>SH+3){
+    G.lives--; updateScore(); beep(300,0.35,'square',0.07,120);
+    if(G.lives<=0){ G.over=true; caption('[Low buzz] Out of balls.',2400); setTimeout(end,1200); }
+    else { claraSay('lose',0.45); caption('[Low buzz] The ball got past. '+G.lives+(G.lives===1?' ball':' balls')+' left.',2400); G.wait=1.3; }
+  }
+}
+function drawBricks(){
+  sx.fillStyle=BG; sx.fillRect(0,0,SW,SH); sx.fillStyle=FG;
+  num(G.score,4,2,2); lifeDots(SW-6,4);
+  G.bricks.forEach(function(br){ if(!br.on) return; sx.fillStyle=BRICK_COLORS[br.r]; sx.fillRect(Math.round(br.x),br.y,br.w,br.h); if(br.hits>1){ sx.fillStyle='#5a3a2a'; sx.fillRect(Math.round(br.x)+2,br.y+1,br.w-4,2); } });
+  sx.fillStyle=FG; sx.fillRect(Math.round(G.px-G.pw/2),SH-6,G.pw,3);
+  if(!G.over) sx.fillRect(Math.round(G.ball.x-1.5),Math.round(G.ball.y-1.5),3,3);
+  drawParts();
+}
+
+/* ----- Snowflake Storm ----- */
+var FLAKE=[['1001001','0101010','0011100','1111111','0011100','0101010','1001001'],['0001000','1001001','0111110','0011100','0111110','1001001','0001000']];
+var SLED=['000010000','000111000','011111110','111111111','101000101'];
+var FLAKE_COLORS=['#ffffff','#e4ecf6','#cfe0f0','#b9d3ea'];
+function sprite(rows,x,y){ for(var r=0;r<rows.length;r++) for(var c=0;c<rows[r].length;c++) if(rows[r][c]==='1') sx.fillRect(x+c,y+r,1,1); }
+function newSnow(){
+  var flakes=[]; for(var r=0;r<4;r++) for(var c=0;c<8;c++) flakes.push({r:r,c:c,on:true});
+  var forts=[]; [26,73,120].forEach(function(fx){ var cells=[]; for(var y=0;y<6;y++) for(var x=0;x<14;x++){ var corner=(y===0&&(x<2||x>11))||(y>=4&&x>=5&&x<=8); cells.push(!corner); } forts.push({x:fx-7,y:SH-21,cells:cells}); });
+  G={ kind:'snow', px:SW/2, flakes:flakes, left:32, gx:12, gy:14+(LEVEL-1)*3, dir:1, tick:0.6, frame:0, note:0, shot:null, cool:0, ice:[], iceT:2, forts:forts, score:0, lives:livesFor(), inv:0, over:false, won:false, wait:1.0 };
+}
+function marchGap(){ var base={gentle:0.75,normal:0.55,lively:0.38}[S.speed]||0.75; return base*(0.22+0.78*G.left/32)/lvlMul(); }
+function flakeXY(f){ return {x:G.gx+f.c*14, y:G.gy+f.r*10}; }
+function fortHit(x,y){
+  for(var i=0;i<G.forts.length;i++){ var f=G.forts[i], cx=Math.floor(x-f.x), cy=Math.floor(y-f.y);
+    if(cx>=0&&cx<14&&cy>=0&&cy<6&&f.cells[cy*14+cx]){ for(var dy=-1;dy<=1;dy++) for(var dx=-1;dx<=1;dx++){ var X=cx+dx,Y=cy+dy; if(X>=0&&X<14&&Y>=0&&Y<6&&Math.random()<0.7) f.cells[Y*14+X]=false; } f.cells[cy*14+cx]=false; return true; } }
+  return false;
+}
+function updSnow(dt){
+  var PY=SH-7; G.px=steerX(G.px,85,dt,5); stepParts(dt);
+  if(G.over) return;
+  if(G.wait>0){ G.wait-=dt; return; }
+  G.inv=Math.max(0,G.inv-dt); G.cool-=dt;
+  // throw a snowball (one in the air at a time)
+  var want = S.auto==='on' || keys[' '] || fireHeld || mouseDown || padFire(0);
+  if(want && !G.shot && G.cool<=0){ G.shot={x:G.px,y:PY-1}; G.cool=0.25; beep(700,0.05,'square',0.04,500); pressFlash=0.12; }
+  if(G.shot){ G.shot.y-=130*dt;
+    if(G.shot.y<8) G.shot=null;
+    else if(fortHit(G.shot.x,G.shot.y)) G.shot=null;
+    else { for(var i=0;i<G.flakes.length;i++){ var f=G.flakes[i]; if(!f.on) continue; var p=flakeXY(f);
+      if(G.shot.x>=p.x-0.5 && G.shot.x<=p.x+7.5 && G.shot.y>=p.y && G.shot.y<=p.y+7){
+        f.on=false; G.left--; G.score+=(4-f.r)*10; updateScore(); puff(p.x+3,p.y+3,10,FLAKE_COLORS[f.r]); beep(880,0.06,'square',0.05,1320); G.shot=null;
+        if(G.left===0){ G.over=true; G.won=true; caption('[Happy bleeps] Every snowflake burst!',2400); setTimeout(end,1200); }
+        break; } } }
+  }
+  // the rows march side to side and step down at the edges
+  G.tick-=dt;
+  if(G.tick<=0 && G.left>0){
+    G.tick=marchGap(); G.frame^=1; beep([196,175,165,147][G.note++%4],0.07,'square',0.035);
+    var minX=999,maxX=-999,maxY=0; G.flakes.forEach(function(f){ if(!f.on) return; var p=flakeXY(f); minX=Math.min(minX,p.x); maxX=Math.max(maxX,p.x+7); maxY=Math.max(maxY,p.y+7); });
+    if((G.dir>0 && maxX+2>SW-2) || (G.dir<0 && minX-2<2)){ G.dir=-G.dir; G.gy+=3; maxY+=3; } else G.gx+=G.dir*2;
+    if(maxY>=SH-22){ G.over=true; caption('[Soft hush] The snow reached the porch.',2600); setTimeout(end,1300); return; }
+  }
+  // icicles fall from the lowest flake in a column
+  G.iceT-=dt; var maxIce=({gentle:1,normal:2,lively:3}[S.speed]||1)+(LEVEL>=4?1:0);
+  if(G.iceT<=0){ G.iceT={gentle:2.2,normal:1.4,lively:0.9}[S.speed]||2.2; G.iceT*=0.6+Math.random()*0.8;
+    if(G.ice.length<maxIce){ var cols={}; G.flakes.forEach(function(f){ if(f.on && (!cols[f.c]||f.r>cols[f.c].r)) cols[f.c]=f; }); var ks=Object.keys(cols); if(ks.length){ var f=cols[ks[Math.floor(Math.random()*ks.length)]], p=flakeXY(f); G.ice.push({x:p.x+3,y:p.y+8}); } } }
+  var iceSp=({gentle:28,normal:40,lively:55}[S.speed]||28)*lvlMul();
+  for(var j=G.ice.length-1;j>=0;j--){ var c=G.ice[j]; c.y+=iceSp*dt;
+    if(c.y>SH){ G.ice.splice(j,1); continue; }
+    if(fortHit(c.x,c.y+3)){ G.ice.splice(j,1); continue; }
+    if(G.inv<=0 && Math.abs(c.x-G.px)<=4.5 && c.y+4>=PY && c.y<=PY+5){
+      G.ice.splice(j,1); G.lives--; G.inv=1.6; updateScore(); beep(260,0.4,'square',0.07,90); puff(G.px,PY+2,12,'#9ec3e6');
+      if(G.lives<=0){ G.over=true; caption('[Low buzz] The sled is snowed under.',2400); setTimeout(end,1200); }
+      else claraSay('lose',0.45); caption('[Crack] An icicle hit the sled. '+G.lives+(G.lives===1?' life':' lives')+' left.',2400);
+    }
+  }
+}
+function drawSnow(){
+  var PY=SH-7;
+  sx.fillStyle=BG; sx.fillRect(0,0,SW,SH); sx.fillStyle=FG;
+  num(G.score,4,2,2); lifeDots(SW-6,4);
+  sx.fillStyle='#4a5a4a'; sx.fillRect(0,SH-1,SW,1);
+  G.flakes.forEach(function(f){ if(!f.on) return; var p=flakeXY(f); sx.fillStyle=FLAKE_COLORS[f.r]; sprite(FLAKE[G.frame],Math.round(p.x),Math.round(p.y)); });
+  sx.fillStyle='#d9d3e3'; G.forts.forEach(function(f){ for(var i=0;i<f.cells.length;i++) if(f.cells[i]) sx.fillRect(f.x+i%14,f.y+Math.floor(i/14),1,1); });
+  sx.fillStyle='#9ec3e6'; G.ice.forEach(function(c){ sx.fillRect(Math.round(c.x),Math.round(c.y),1,4); });
+  sx.fillStyle=FG; if(G.shot) sx.fillRect(Math.round(G.shot.x)-1,Math.round(G.shot.y),2,2);
+  if(!(G.inv>0 && Math.floor(G.inv*8)%2)) { sx.fillStyle='#e8a07a'; sprite(SLED,Math.round(G.px-4),PY); }
+  drawParts();
+}
+
+
+/* ----- Franky's Candy Maze: Bonbons du Temps Passé ----- */
+// # shelf of candy jars, . sugar drop, o Hope Chocolate, D the little gate to the back room, h back room floor
+var MAZE_HALF=["################","#o.....#........","#.###..#.######.","#...............","#.###.#.####.###","#.....#....#....","#####.####......","#####.#####.###D","......#####.#hhh","#####.#####.####","#####.#.........","#.....#.#####.##","#.###.#.....#...","#o..#...###.#.##","###.#.#.#.......","#.....#...#####.","#.......#.......","################"];
+var MZ=MAZE_HALF.map(function(r){ return r+r.split('').reverse().join(''); }), MW=32, MH=18, MT=5, MY0=10;
+var SUGAR=['#f4a6c0','#a8e0c0','#f3e08a','#b9d3ea'];
+var CLARA=['.hhh.','hfffh','.fff.','.bbb.','.b.b.'], CLARA_C={h:'#c06a3a',f:'#f0c8a0',b:'#6f95d0'};
+var WISP=['.###.','#####','#e#e#','#####','#.#.#'];
+var FOG_COLORS=['#c0a8e0','#98b0d0','#d0a0b0','#a8c0a8'];
+var DIRS={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};
+function cell(x,y){ if(y<0||y>=MH) return '#'; return MZ[y].charAt(((x%MW)+MW)%MW); }
+function open(x,y,who){ var c=cell(x,y); if(c==='#') return false; if(c==='D'||c==='h') return who==='fog'; return true; }
+function mazeSpeeds(){ var b=({ gentle:{me:5.5,fog:3.6,scared:2.4,time:9}, normal:{me:6.5,fog:5.0,scared:2.8,time:7}, lively:{me:7.5,fog:6.6,scared:3.2,time:5} }[S.speed] || {me:5.5,fog:3.6,scared:2.4,time:9}), m=1+0.08*(LEVEL-1);
+  return {me:b.me, fog:Math.min(b.me*0.98,b.fog*m), scared:b.scared, time:Math.max(3,b.time/m)}; }
+function newMaze(){
+  var dots={}, n=0; for(var y=0;y<MH;y++) for(var x=0;x<MW;x++){ var c=cell(x,y); if(c==='.'||c==='o'){ dots[x+','+y]=c; n++; } }
+  G={ kind:'maze', dots:dots, left:n, total:n, score:0, lives:livesFor(), over:false, won:false, wait:1.5, scared:0, chain:0, gum:null, gumAt:[60,140], eatBeep:0 };
+  mazeReset();
+}
+function mazeReset(){
+  G.me={cx:15,cy:14,dir:[0,0],want:[-1,0],p:0};
+  G.fogs=[0,1,2,3].map(function(i){ return {i:i, cx:13+i+(i>1?1:0), cy:8, dir:[0,0], p:0, state:'wait', release:[0.5,3,6,9][i]+(S.speed==='gentle'?2:0)}; });
+  G.scared=0; G.chain=0;
+}
+function mazePos(e){ return {x:e.cx+e.dir[0]*e.p, y:e.cy+e.dir[1]*e.p}; }
+// move one walker; at each tile centre the chooser picks the next direction
+function walk(e, speed, dt, who, choose){
+  if(e.dir[0]===0&&e.dir[1]===0){ choose(e); if(e.dir[0]===0&&e.dir[1]===0) return; }
+  e.p+=speed*dt;
+  while(e.p>=1){ e.p-=1; e.cx=(((e.cx+e.dir[0])%MW)+MW)%MW; e.cy+=e.dir[1]; choose(e); if(e.dir[0]===0&&e.dir[1]===0){ e.p=0; break; } }
+}
+function wantDir(){
+  var u=(keys.ArrowUp||keys.w)?1:0, d=(keys.ArrowDown||keys.s)?1:0, l=(keys.ArrowLeft||keys.a)?1:0, r=(keys.ArrowRight||keys.d)?1:0;
+  if(touchDir<0) u=1; if(touchDir>0) d=1; if(touchH<0) l=1; if(touchH>0) r=1;
+  var ax=padAxisX(0), ay=padAxis(0); if(ax<-0.5) l=1; if(ax>0.5) r=1; if(ay<-0.5) u=1; if(ay>0.5) d=1;
+  if(u) return [0,-1]; if(d) return [0,1]; if(l) return [-1,0]; if(r) return [1,0];
+  if(mouseX!==null && performance.now()-lastMouse<1500){
+    var mp=mazePos(G.me), tx=(mouseX-TV.sx)/TV.sw*SW/MT-0.5, ty=((mouseY-TV.sy)/TV.sh*SH-MY0)/MT-0.5, dx=tx-mp.x, dy=ty-mp.y;
+    if(Math.abs(dx)>0.6||Math.abs(dy)>0.6) return Math.abs(dx)>Math.abs(dy) ? [dx<0?-1:1,0] : [0,dy<0?-1:1];
+  }
+  return null;
+}
+function meChoose(e){
+  eatAt(e.cx,e.cy);
+  if(open(e.cx+e.want[0],e.cy+e.want[1],'me')) e.dir=e.want.slice();
+  else if(!open(e.cx+e.dir[0],e.cy+e.dir[1],'me')) e.dir=[0,0];
+}
+function eatAt(x,y){
+  var k=x+','+y, c=G.dots[k];
+  if(G.gum && G.gum.x===x && G.gum.y===y){ G.gum=null; G.score+=300; updateScore(); beep(660,0.1,'square',0.06,1320); caption('[Sparkle] A Courage Gumdrop! 300 points.',2200); }
+  if(!c) return;
+  delete G.dots[k]; G.left--;
+  if(c==='o'){ G.score+=50; G.scared=mazeSpeeds().time; G.chain=0; G.fogs.forEach(function(f){ if(f.state==='chase'){ f.state='scared'; if(f.p>0){ f.cx+=f.dir[0]; f.cy+=f.dir[1]; f.cx=((f.cx%MW)+MW)%MW; f.p=1-f.p; } f.dir=[-f.dir[0],-f.dir[1]]; } });
+    beep(330,0.3,'triangle',0.07,660); caption('[Warm hum] A Hope Chocolate! The fog fades. Catch it to clear it away.',3000); }
+  else { G.score+=10; if((G.eatBeep++)%2===0) beep(G.eatBeep%4<2?620:520,0.03,'square',0.025); }
+  updateScore();
+  var eaten=G.total-G.left; if(G.gumAt.length && eaten>=G.gumAt[0]){ G.gumAt.shift(); G.gum={x:15,y:10,t:10}; caption('[Sparkle] A Courage Gumdrop appeared in the middle of the shop.',2600); }
+  if(G.left===0){ G.over=true; G.won=true; caption('[The shop bell rings] Every sugar drop collected!',2600); setTimeout(end,1400); }
+}
+function fogTarget(f){
+  var me=G.me, mp=mazePos(me);
+  if(f.state==='home') return [15,6];
+  if(f.i===0) return [me.cx,me.cy];
+  if(f.i===1) return [me.cx+me.dir[0]*4, me.cy+me.dir[1]*4];
+  if(f.i===2) return (Math.floor(G.t/7)%2) ? [me.cx,me.cy] : [[1,1],[30,1],[1,16],[30,16]][Math.floor(G.t/7/2)%4];
+  var dd=Math.hypot(f.cx-mp.x,f.cy-mp.y); return dd>8 ? [me.cx,me.cy] : [1,16];
+}
+function fogChoose(f){
+  if(f.state==='home' && f.cx===15 && f.cy===6){ f.state='wait'; f.cx=15; f.cy=8; f.dir=[0,0]; f.p=0; f.release=G.t+1.5; return; }
+  var opts=[]; ['up','left','down','right'].forEach(function(k){ var d=DIRS[k]; if(d[0]===-f.dir[0]&&d[1]===-f.dir[1]&&(f.dir[0]||f.dir[1])) return;
+    var nx=f.cx+d[0], ny=f.cy+d[1], c=cell(nx,ny);
+    if(c==='#') return; if((c==='D'||c==='h') && f.state!=='home') return; opts.push(d); });
+  if(!opts.length){ f.dir=[-f.dir[0],-f.dir[1]]; return; }
+  var wander = f.state==='scared' || (S.speed==='gentle' && Math.random()<0.3) || (S.speed==='normal' && Math.random()<0.12);
+  if(wander){ f.dir=opts[Math.floor(Math.random()*opts.length)]; return; }
+  var t=fogTarget(f), best=null, bd=1e9; opts.forEach(function(d){ var dd=Math.pow(f.cx+d[0]-t[0],2)+Math.pow(f.cy+d[1]-t[1],2); if(dd<bd){bd=dd;best=d;} });
+  f.dir=best;
+}
+function updMaze(dt){
+  G.t=(G.t||0)+dt; stepParts(dt);
+  if(G.over) return;
+  if(G.wait>0){ G.wait-=dt; return; }
+  var sp=mazeSpeeds(), me=G.me, w=wantDir();
+  if(w){ me.want=w; joyTilt+=((w[0]||w[1])-joyTilt)*Math.min(1,dt*14);
+    if(w[0]===-me.dir[0]&&w[1]===-me.dir[1]&&(w[0]||w[1])&&me.p>0){ me.cx=((me.cx+me.dir[0])%MW+MW)%MW; me.cy+=me.dir[1]; me.p=1-me.p; me.dir=w.slice(); } }
+  else joyTilt*=0.85;
+  walk(me, sp.me, dt, 'me', meChoose);
+  if(G.scared>0){ G.scared-=dt; if(G.scared<=0) G.fogs.forEach(function(f){ if(f.state==='scared') f.state='chase'; }); }
+  if(G.gum){ G.gum.t-=dt; if(G.gum.t<=0) G.gum=null; }
+  G.fogs.forEach(function(f){
+    if(f.state==='wait'){ if(G.t>=f.release){ f.state='chase'; f.cx=15; f.cy=6; f.dir=[-1,0]; f.p=0; } return; }
+    var v = f.state==='home'?10 : f.state==='scared'?sp.scared : sp.fog;
+    if(cell(f.cx,f.cy)===' '||(f.cy===8&&(f.cx<5||f.cx>26))) v*=0.6;   // slower in the side passages
+    walk(f, v, dt, 'fog', fogChoose);
+    if(f.state==='home') return;
+    var a=mazePos(f), b=mazePos(me), dx=Math.abs(a.x-b.x); dx=Math.min(dx,MW-dx);
+    if(dx<0.6 && Math.abs(a.y-b.y)<0.6){
+      if(f.state==='scared'){ f.state='home'; G.chain++; var pts=100*Math.pow(2,G.chain-1); G.score+=pts; updateScore(); puff(a.x*MT+2,MY0+a.y*MT+2,12,FOG_COLORS[f.i]); beep(440,0.2,'triangle',0.07,1100); caption('[Whoosh] The fog clears. '+pts+' points.',2000); }
+      else { mazeCaught(); }
+    }
+  });
+}
+function mazeCaught(){
+  G.lives--; updateScore(); beep(300,0.5,'triangle',0.07,90); var mp=mazePos(G.me); puff(mp.x*MT+2,MY0+mp.y*MT+2,14,'#c0a8e0');
+  if(G.lives<=0){ G.over=true; caption('[Soft whoosh] The fog wrapped around Clara.',2600); setTimeout(end,1400); return; }
+  claraSay('lose',0.45); caption('[Soft whoosh] The fog caught Clara. '+G.lives+(G.lives===1?' try':' tries')+' left.',2600);
+  var t=G.t; mazeReset(); G.fogs.forEach(function(f){ f.release+=t; }); G.wait=1.6;
+}
+function sprite5(rows,x,y,colors,fallback){ for(var r=0;r<5;r++) for(var c=0;c<5;c++){ var ch=rows[r][c]; if(ch==='.') continue; sx.fillStyle=(colors&&colors[ch])||fallback; sx.fillRect(x+c,y+r,1,1); } }
+function drawMaze(){
+  sx.fillStyle='#1a120c'; sx.fillRect(0,0,SW,SH);
+  // warm amber glow from the shop window
+  var gl=sx.createRadialGradient(SW/2,MY0+40,5,SW/2,MY0+40,90); gl.addColorStop(0,'rgba(232,170,90,.18)'); gl.addColorStop(1,'rgba(232,170,90,0)'); sx.fillStyle=gl; sx.fillRect(0,0,SW,SH);
+  for(var y=0;y<MH;y++) for(var x=0;x<MW;x++){ var c=cell(x,y), px=x*MT, py=MY0+y*MT;
+    if(c==='#'){ sx.fillStyle='#5e3a22'; sx.fillRect(px,py,MT,MT);
+      sx.fillStyle='#e8b86a'; if(cell(x,y-1)!=='#'&&y>0) sx.fillRect(px,py,MT,1); if(cell(x,y+1)!=='#'&&y<MH-1) sx.fillRect(px,py+MT-1,MT,1); if(cell(x-1,y)!=='#'&&x>0) sx.fillRect(px,py,1,MT); if(cell(x+1,y)!=='#'&&x<MW-1) sx.fillRect(px+MT-1,py,1,MT);
+      // a few tiny candy jars on the deep shelves
+      if(cell(x,y-1)==='#'&&cell(x,y+1)==='#'&&cell(x-1,y)==='#'&&cell(x+1,y)==='#'&&(x*7+y*3)%4===0){ sx.fillStyle=SUGAR[(x+y)%4]; sx.fillRect(px+1,py+2,3,2); sx.fillStyle='#d9c9a8'; sx.fillRect(px+1,py+1,3,1); } }
+    else if(c==='D'){ sx.fillStyle='#e8b86a'; sx.fillRect(px,py+2,MT,1); } }
+  for(var k in G.dots){ var parts2=k.split(','), dx=+parts2[0], dy=+parts2[1], px2=dx*MT, py2=MY0+dy*MT;
+    if(G.dots[k]==='o'){ if(!(G.scared<=0 && Math.floor((G.t||0)*3)%2)){ sx.fillStyle='#8a5530'; sx.fillRect(px2+1,py2+1,3,3); sx.fillStyle='#e8c27a'; sx.fillRect(px2+2,py2+2,1,1); } }
+    else { sx.fillStyle=SUGAR[(dx+dy)%4]; sx.fillRect(px2+2,py2+2,1,1); } }
+  if(G.gum){ sx.fillStyle='#f06a8a'; sx.fillRect(G.gum.x*MT+1,MY0+G.gum.y*MT+1,3,3); sx.fillStyle='#ffd0dc'; sx.fillRect(G.gum.x*MT+2,MY0+G.gum.y*MT+1,1,1); }
+  var mp=mazePos(G.me); sprite5(CLARA,Math.round(mp.x*MT),Math.round(MY0+mp.y*MT),CLARA_C);
+  G.fogs.forEach(function(f){ var a=mazePos(f), X=Math.round(a.x*MT), Y=Math.round(MY0+a.y*MT);
+    if(f.state==='home'){ sx.fillStyle='#ffffff'; sx.fillRect(X+1,Y+2,1,1); sx.fillRect(X+3,Y+2,1,1); return; }
+    var col=FOG_COLORS[f.i]; if(f.state==='scared') col=(G.scared<2 && Math.floor(G.scared*6)%2)?FOG_COLORS[f.i]:'#e8e4f0';
+    sprite5(WISP,X,Y,{'#':col,'e':'#2a2230'});
+    if(f.state!=='scared' && Math.floor((G.t||0)*4+f.i)%2) { sx.fillStyle=col; sx.fillRect(X+(f.i%2?0:4),Y+4,1,1); } });
+  // score and tries along the top
+  sx.fillStyle=FG; num(G.score,3,2,1); sx.fillStyle='#f0c8a0'; for(var i=0;i<G.lives;i++) sx.fillRect(SW-5-i*5,3,3,3);
+  drawParts();
+}
+// testing helper: walk toward the nearest sugar drop
+function mazeAutopilot(){
+  if(!G||G.kind!=='maze'||G.over) return; var me=G.me, sx0=me.p>0?((me.cx+me.dir[0])%MW+MW)%MW:me.cx, sy0=me.p>0?me.cy+me.dir[1]:me.cy, start=sx0+','+sy0, q=[[sx0,sy0,null]], seen={}; seen[start]=1; if(G.dots[start]) return;
+  while(q.length){ var n=q.shift(); if(G.dots[n[0]+','+n[1]] && n[2]){ keys.ArrowUp=keys.ArrowDown=keys.ArrowLeft=keys.ArrowRight=false; keys[{'0,-1':'ArrowUp','0,1':'ArrowDown','-1,0':'ArrowLeft','1,0':'ArrowRight'}[n[2].join(',')]]=true; return; }
+    ['up','down','left','right'].forEach(function(k){ var d=DIRS[k], nx=((n[0]+d[0])%MW+MW)%MW, ny=n[1]+d[1], key=nx+','+ny; if(!seen[key] && open(nx,ny,'me')){ seen[key]=1; q.push([nx,ny,n[2]||d]); } }); }
+}
+
+/* ----- Whiskers Pinball: a river table for the time otter (original game, Tina 2026-11-17) -----
+   The table is drawn tall in the middle of the TV. River stones are bumpers, four enchanted raspberries are targets,
+   Whiskers' moon pool at the top is a bonus. Pick all four raspberries to go up a level (5 levels). */
+var PX0=44, PX1=116, LANE=108;
+var WHISKERS=['....ss......','..ssssss....','.ssesssss...','.sssssssn...','..sssss.....','.sssssssss..','sssssssssss.','.ss.sss..sst','...........t'];
+var WH_C={s:'#c9d2dc',e:'#1a1d22',n:'#3a2a2a',t:'#aab4c0'};
+function pinFlipLen(){ return S.speed==='gentle'?13:S.speed==='normal'?12:11; }
+function newPin(){
+  var segs=[ [PX0,100,PX0,12],[PX0,12,PX0+12,0],[PX0+12,0,PX1-12,0],[PX1-12,0,PX1,12],[PX1,12,PX1,100],   // the table edge
+    [LANE,100,LANE,26],                                                    // the launch lane wall
+    [PX0,72,61,86],[LANE,72,91,86] ];                                        // the inlanes down to the flippers
+  G={ kind:'pin', segs:segs, score:0, lives:livesFor(), over:false, won:false, wait:0.6,
+    ball:{x:112,y:94,vx:0,vy:0,lane:true,t:0}, launchT:2.2,
+    stones:[{x:66,y:30,r:5,f:0},{x:86,y:30,r:5,f:0},{x:76,y:45,r:5,f:0}].concat(LEVEL>=3?[{x:56,y:16,r:3,f:0}]:[]).concat(LEVEL>=4?[{x:96,y:16,r:3,f:0}]:[]),
+    berries:[{x:50,y:44},{x:50,y:56},{x:102,y:44},{x:102,y:56}].map(function(b){ b.on=true; b.f=0; return b; }),
+    pool:{x:76,y:11,r:4,f:0}, whisk:0,
+    fl:[{px:61,py:86,dir:1,a:0.5,av:0},{px:91,py:86,dir:-1,a:0.5,av:0}] };
+}
+function flipTip(f){ var L=pinFlipLen(), a=f.a; return {x:f.px+f.dir*Math.cos(a)*L, y:f.py+Math.sin(a)*L}; }
+function pinGrav(){ return 95*(1+0.08*(LEVEL-1))*({gentle:0.85,normal:1,lively:1.15}[S.speed]||0.85); }
+function collideSeg(b,x1,y1,x2,y2,r,sv){   // sv: the surface velocity (flippers)
+  var dx=x2-x1, dy=y2-y1, L2=dx*dx+dy*dy, t=Math.max(0,Math.min(1,((b.x-x1)*dx+(b.y-y1)*dy)/L2)), cx=x1+t*dx, cy=y1+t*dy, ex=b.x-cx, ey=b.y-cy, d=Math.hypot(ex,ey);
+  if(d>=r||d<1e-6) return false; var nx=ex/d, ny=ey/d; b.x=cx+nx*r; b.y=cy+ny*r;
+  var svx=sv?sv.x:0, svy=sv?sv.y:0, rvx=b.vx-svx, rvy=b.vy-svy, vn=rvx*nx+rvy*ny;
+  if(vn<0){ rvx-=1.55*vn*nx; rvy-=1.55*vn*ny; b.vx=rvx+svx; b.vy=rvy+svy; } return true; }
+function pinHeld(side){ // side -1 left, 1 right
+  var k = side<0 ? (keys.ArrowLeft||keys.z||keys.a||touchH<0) : (keys.ArrowRight||keys.m||keys['/']||keys.l||touchH>0);
+  if(!k && mouseDown && mouseX!==null){ var mid=TV.sx+TV.sw/2; k= side<0 ? mouseX<mid : mouseX>=mid; }
+  var pads=navigator.getGamepads?navigator.getGamepads():[], p=pads&&pads[0]; if(p){ if(side<0 && ((p.buttons[4]&&p.buttons[4].pressed)||(p.buttons[14]&&p.buttons[14].pressed))) k=true; if(side>0 && ((p.buttons[5]&&p.buttons[5].pressed)||(p.buttons[15]&&p.buttons[15].pressed))) k=true; }
+  return !!k; }
+var launchHeld=false;
+function updPin(dt){
+  stepParts(dt); if(G.over) return;
+  G.whisk=Math.max(0,G.whisk-dt);
+  [G.stones,G.berries,[G.pool]].forEach(function(list){ list.forEach(function(o){ o.f=Math.max(0,(o.f||0)-dt); }); });
+  // flippers: up fast when held, down a little slower
+  G.fl.forEach(function(f,i){ var held=pinHeld(i?1:-1), up=-0.5, rest=0.5, old=f.a;
+    if(held && f.a>up && old===rest) beep(150,0.04,'square',0.04);
+    f.a = held ? Math.max(up,f.a-dt*22) : Math.min(rest,f.a+dt*12); f.av=(f.a-old)/Math.max(dt,1e-4); });
+  joyTilt+=(((pinHeld(1)?1:0)-(pinHeld(-1)?1:0))-joyTilt)*Math.min(1,dt*14);
+  var b=G.ball;
+  if(G.wait>0){ G.wait-=dt; return; }
+  if(b.lane){ b.x=112; b.y=94; G.launchT-=dt;
+    if(G.launchT<=0 || keys[' '] || launchHeld || padFire(0) || keys.ArrowDown){ b.lane=false; b.up=true; b.vx=0; b.vy=-(150+Math.random()*20); beep(220,0.25,'square',0.06,660); caption('[Spring twang] The ball shoots up the river.',1800); pressFlash=0.15; }
+    return; }
+  var g=pinGrav(), R=1.6, steps=8, h=dt/steps;
+  for(var s=0;s<steps;s++){
+    b.vy+=g*h; b.x+=b.vx*h; b.y+=b.vy*h;
+    G.segs.forEach(function(sg){ collideSeg(b,sg[0],sg[1],sg[2],sg[3],R); });
+    // the lane: once the ball is out at the top it may not fall back down the lane
+    if(b.up && b.y<24) b.up=false;
+    if(!b.up && b.y>28 && b.x>LANE-R && b.x<PX1) { b.x=LANE-R-0.1; b.vx=-Math.abs(b.vx)*0.5; }
+    G.fl.forEach(function(f){ var tip=flipTip(f), L=pinFlipLen(), cx=b.x-f.px, cy=b.y-f.py;
+      // surface speed of the flipper where the ball touches it
+      var along=Math.min(L,Math.hypot(cx,cy)), ang=f.a, vx=-Math.sin(ang)*f.av*along*f.dir, vy=Math.cos(ang)*f.av*along, sv={x:vx,y:vy};
+      if(collideSeg(b,f.px,f.py,tip.x,tip.y,R+0.8,sv)){ var sp=Math.hypot(b.vx,b.vy); if(f.av<-1 && sp<60){ b.vy-=40; } } });
+    G.stones.forEach(function(st){ var dx=b.x-st.x, dy=b.y-st.y, d=Math.hypot(dx,dy); if(d<st.r+R && d>0){ var nx=dx/d, ny=dy/d; b.x=st.x+nx*(st.r+R); b.y=st.y+ny*(st.r+R); var kick=Math.max(85, Math.hypot(b.vx,b.vy))*(1+0.05*(LEVEL-1)); b.vx=nx*kick; b.vy=ny*kick;
+      if(st.f<=0){ G.score+=10*LEVEL; updateScore(); beep(520+Math.random()*80,0.05,'square',0.05); puff(st.x,st.y,6,'#9ec3e6'); } st.f=0.15; } });
+    G.berries.forEach(function(br){ if(!br.on) return; var dx=b.x-br.x, dy=b.y-br.y, d=Math.hypot(dx,dy); if(d<2.6+R && d>0){ var nx=dx/d, ny=dy/d; b.x=br.x+nx*(2.6+R); b.y=br.y+ny*(2.6+R); var vn=b.vx*nx+b.vy*ny; if(vn<0){ b.vx-=1.6*vn*nx; b.vy-=1.6*vn*ny; }
+      br.on=false; G.score+=100*LEVEL; updateScore(); beep(880,0.08,'square',0.05,1320); puff(br.x,br.y,10,'#e0485a');
+      var left=G.berries.filter(function(q){return q.on;}).length;
+      if(left>0) caption('[Pop] A raspberry for Whiskers! '+left+' to go.',1800); else pinLevelUp(); } });
+    var pl=G.pool, pd=Math.hypot(b.x-pl.x,b.y-pl.y); if(pd<pl.r+R && pl.f<=0){ pl.f=1.2; G.whisk=1.6; G.score+=250*LEVEL; updateScore(); b.vy=Math.abs(b.vy)*0.6+20; b.vx=(Math.random()-0.5)*40; beep(330,0.3,'triangle',0.07,990); puff(pl.x,pl.y,14,'#c9d2dc'); caption('[Splash and a happy chirp] Whiskers\u2019 moon pool! '+(250*LEVEL)+' points.',2200); }
+    var sp2=Math.hypot(b.vx,b.vy), cap=230; if(sp2>cap){ b.vx*=cap/sp2; b.vy*=cap/sp2; }
+  }
+  if(b.y>104){ G.lives--; updateScore(); beep(300,0.45,'square',0.07,90);
+    if(G.lives<=0){ G.over=true; caption('[Soft splash] The last ball floated away down the river.',2600); setTimeout(end,1400); }
+    else { claraSay('lose',0.45); caption('[Soft splash] The ball drained. '+G.lives+(G.lives===1?' ball':' balls')+' left.',2400); b.lane=true; G.launchT=2.2; G.wait=0.8; } }
+}
+function pinLevelUp(){
+  G.score+=500*LEVEL; updateScore(); G.whisk=2.5;
+  beep(523,0.12,'square',0.06); setTimeout(function(){beep(659,0.12,'square',0.06);},140); setTimeout(function(){beep(784,0.25,'square',0.06);},280);
+  if(LEVEL>=MAXL){ G.over=true; G.won=true; caption('[Whiskers chitters happily] Every raspberry on every level!',3000); setTimeout(end,1600); return; }
+  LEVEL++; var keepScore=G.score, keepLives=Math.min(livesFor()+2,G.lives+1), keepBall=G.ball; newPin(); G.score=keepScore; G.lives=keepLives; G.ball=keepBall; G.wait=0; updateScore();
+  caption('[Whiskers chitters happily] All four raspberries! Level '+LEVEL+': the river runs a little faster.',3200); }
+function drawPin(){
+  sx.fillStyle='#0f1820'; sx.fillRect(0,0,SW,SH);
+  // the river table: moonlit water with soft ripples
+  var wg=sx.createLinearGradient(0,0,0,SH); wg.addColorStop(0,'#1d3a4a'); wg.addColorStop(1,'#14303a'); sx.fillStyle=wg; sx.fillRect(PX0,0,PX1-PX0,SH);
+  sx.fillStyle='rgba(180,210,230,.18)'; for(var y=6;y<SH;y+=9) for(var x=PX0+((y/9)%2)*6;x<PX1;x+=14) sx.fillRect(x,y,4,1);
+  // edges, lane and inlanes
+  sx.strokeStyle='#d9c9a8'; sx.lineWidth=1; G.segs.forEach(function(sg){ sx.beginPath(); sx.moveTo(sg[0]+0.5,sg[1]+0.5); sx.lineTo(sg[2]+0.5,sg[3]+0.5); sx.stroke(); });
+  // moon pool
+  var pl=G.pool; sx.fillStyle=pl.f>0?'#ffffff':'#c9d2dc'; sx.beginPath(); sx.arc(pl.x,pl.y,pl.r,0,Math.PI*2); sx.fill(); sx.fillStyle='#1d3a4a'; sx.beginPath(); sx.arc(pl.x+1.5,pl.y-1,pl.r-1,0,Math.PI*2); sx.fill();
+  // river stones
+  G.stones.forEach(function(st){ sx.fillStyle=st.f>0?'#efe6cf':'#8a8a92'; sx.beginPath(); sx.arc(st.x,st.y,st.r,0,Math.PI*2); sx.fill(); sx.fillStyle=st.f>0?'#ffffff':'#b4b4bc'; sx.fillRect(Math.round(st.x-st.r/2),Math.round(st.y-st.r/2),2,1); });
+  // raspberries (picked ones leave a small leaf)
+  G.berries.forEach(function(br){ if(br.on){ sx.fillStyle='#d8344a'; sx.fillRect(br.x-2,br.y-2,4,4); sx.fillStyle='#f27a8a'; sx.fillRect(br.x-1,br.y-1,1,1); sx.fillStyle='#58b947'; sx.fillRect(br.x-1,br.y-3,2,1); } else { sx.fillStyle='#3f7a3a'; sx.fillRect(br.x-1,br.y,2,1); } });
+  // flippers
+  sx.strokeStyle='#efe6cf'; sx.lineWidth=2; G.fl.forEach(function(f){ var t=flipTip(f); sx.beginPath(); sx.moveTo(f.px,f.py); sx.lineTo(t.x,t.y); sx.stroke(); });
+  // the ball: a silver river pebble
+  var b=G.ball; if(!G.over){ sx.fillStyle='#ffffff'; sx.fillRect(Math.round(b.x-1.5),Math.round(b.y-1.5),3,3); }
+  // left panel: Whiskers, score, level
+  sx.fillStyle='#1a1d22'; sx.fillRect(0,0,PX0-1,SH); sx.fillRect(PX1+1,0,SW-PX1-1,SH);
+  var wy=G.whisk>0 ? 32-Math.abs(Math.sin(G.whisk*8))*8 : 34;
+  for(var r=0;r<WHISKERS.length;r++) for(var c=0;c<12;c++){ var ch=WHISKERS[r][c]; if(ch==='.') continue; sx.fillStyle=WH_C[ch]; sx.fillRect(10+c*2,Math.round(wy)+r*2,2,2); }
+  if(G.whisk>0){ sx.fillStyle='#c9d2dc'; sx.fillRect(6,56,32,1); sx.fillRect(10,59,24,1); }
+  sx.fillStyle=FG; num(G.score,3,4,1); sx.fillStyle='#f5cf85'; sx.fillRect(3,14,1,5); sx.fillRect(3,18,3,1); num(LEVEL,8,14,1);
+  // right panel: balls left and raspberries still to pick
+  sx.fillStyle='#ffffff'; for(var i=0;i<G.lives;i++) sx.fillRect(SW-8-i*5,4,3,3);
+  G.berries.forEach(function(br,i){ sx.fillStyle=br.on?'#d8344a':'#3f7a3a'; sx.fillRect(122+i*8,SH-12,4,4); });
+  drawParts();
+}
+// testing helper: flip when the ball comes near a flipper
+function pinAutopilot(){ if(!G||G.kind!=='pin') return; var b=G.ball; keys.ArrowLeft = b.y>74 && b.x<76 && b.vy>0; keys.ArrowRight = b.y>74 && b.x>=76 && b.vy>0; }
+
+/* ----- start and end for all three ----- */
+function startArcade(kind, keep){
+  var carry= keep && G ? {score:G.score, lives:G.lives} : null;
+  if(!keep) LEVEL=+S.lvl||1;
+  game=kind; parts=[]; setTouch();
+  if(kind==='bricks') newBricks(); else if(kind==='maze') newMaze(); else if(kind==='pin') newPin(); else newSnow();
+  if(carry){ G.score=carry.score; G.lives=Math.min(livesFor()+2, carry.lives+1); }
+  updateScore(); $('startOver').hidden=true; $('endOver').hidden=true; paused=false; $('pauseBtn').setAttribute('aria-pressed','false'); $('pauseBtn').textContent='Pause';
+  gameMusic(kind); beep(392,0.08,'square',0.05);
+  setTimeout(function(){ if(!running) return; if(keep) claraSay('level',0.8); else if(Math.random()<0.5) claraSay(kind==='pin'?'pinball':kind==='maze'?'candy':kind==='snow'?'snow':'start'); else claraSay('start'); },1200);
+  caption('Level '+LEVEL+'. '+(kind==='bricks' ? '[The TV hums on] Knock out every brick in the mill wall.' : kind==='maze' ? '[The shop bell jingles] Collect every sugar drop. Watch out for the fog.' : kind==='pin' ? '[A splash and an otter chirp] Pick all four raspberries for Whiskers.' : '[The TV hums on] The snowflakes are coming. Burst them all!'),3000);
+  running=true; last=performance.now(); requestAnimationFrame(frame); cv.focus();
+}
+function endArcade(){
+  var won=G.won; if(won && LEVEL>=MAXL) claraSay('win'); else if(!won) claraSay('lose',0.6);
+  var more = won && LEVEL<MAXL, lvTxt = more ? ' Level '+LEVEL+' cleared! Level '+(LEVEL+1)+' is a little faster.' : (won ? ' That was the last level. You beat all 5!' : '');
+  if(game==='bricks'){ $('endTitle').textContent= won?'The wall is down!':'Good game!'; $('endNote').textContent= (won?'Clara jumps up so fast the popcorn spills. Bernie helps clean it up.':'So close. Try Easy or Big paddles in Settings.')+lvTxt; }
+  else if(game==='maze'){ $('endTitle').textContent= won?'Every sugar drop collected!':'Good game!'; $('endNote').textContent= (won?'Franky smiles: "The sugar is setting correctly again."':'The fog won this time. Try Easy in Settings for slower fog.')+lvTxt; }
+  else if(game==='pin'){ $('endTitle').textContent= won?'Whiskers is splashing for joy!':'Good game!'; $('endNote').textContent= won?'Every raspberry on every level. Whiskers does a happy loop in the moon pool.':'The last ball rolled away down the river. Try Easy for longer flippers and more balls.'; }
+  else { $('endTitle').textContent= won?'Every snowflake burst!':'Good game!'; $('endNote').textContent= (won?'The sky is clear. Bernie thumps his tail on the rug.':'The snow won this time. Try Easy in Settings for slower snowflakes.')+lvTxt; }
+  setNext(game!=='pin' && more);
+  $('endScore').textContent='Score '+G.score;
+  beep(523,0.12,'square',0.06); setTimeout(function(){beep(659,0.12,'square',0.06);},140); setTimeout(function(){beep(784,0.25,'square',0.06);},280);
+  $('endOver').hidden=false; $('againBtn').focus();
+}
+window.tvG=function(){ return G; };
+window.tvPilot=function(){ if(game==='maze') mazeAutopilot(); if(game==='pin') pinAutopilot(); };   /* recording helper: steer by itself for one frame (the explainer video) */
+/* testing helper: play by itself for n steps */
+window.tvAuto=function(n){ for(var i=0;i<n&&running;i++){ if(game==='pin') pinAutopilot(); if(game==='maze') mazeAutopilot(); if(game==='bricks'&&G.ball) G.px=Math.max(G.pw/2+2,Math.min(SW-2-G.pw/2,G.ball.x)); if(game==='snow'){ var t=null; G.flakes.forEach(function(f){ if(f.on && (!t||f.r>t.r)) t=f; }); if(t){ G.px=Math.max(7,Math.min(SW-7,flakeXY(t).x+3)); } } update(1/60); } draw(); return {game:game, score:G.score, lives:G.lives, left:G.left, over:G.over, won:G.won, me:G.me?[G.me.cx,G.me.cy,G.me.p.toFixed(2),G.me.dir.join(','),G.me.want.join(',')]:null}; };
+
+/* ---------- drawing ---------- */
+function resize(){ var r=$('stage').getBoundingClientRect(); DPR=Math.min(devicePixelRatio||1,2); W=Math.max(320,r.width); H=Math.max(300,r.height); cv.width=W*DPR; cv.height=H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0); layout(); if(G) draw(); }
+addEventListener('resize',resize);
+function layout(){
+  var tw=Math.min(W*0.78, (H*0.8)*1.35), th=tw/1.35;
+  TV.w=tw; TV.h=th; TV.x=(W-tw)/2 - Math.min(W*0.06,60); TV.y=Math.max(10,(H-th)/2 - th*0.04);
+  TV.sw=tw*0.66; TV.sh=TV.sw*SH/SW; TV.sx=TV.x+tw*0.06; TV.sy=TV.y+(th*0.82-TV.sh)/2+th*0.04;
+  JOY.s=Math.max(0.6,Math.min(1.4,tw/700)); JOY.x=Math.min(W-70*JOY.s, TV.x+tw+50*JOY.s); JOY.y=TV.y+th-10*JOY.s;
+}
+function rr(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function drawRoom(){
+  // wallpaper: warm stripes with tiny flowers, then wainscot and a braided rug
+  ctx.fillStyle='#5b4636'; ctx.fillRect(0,0,W,H);
+  for(var x=0;x<W;x+=36){ ctx.fillStyle=(x/36)%2?'#614b3a':'#57422f'; ctx.fillRect(x,0,36,H*0.72); }
+  ctx.fillStyle='rgba(232,176,140,.35)'; for(var yy=20;yy<H*0.7;yy+=48){ for(var xx=18+((yy/48)%2)*18;xx<W;xx+=72){ ctx.beginPath(); ctx.arc(xx,yy,3,0,Math.PI*2); ctx.fill(); } }
+  ctx.fillStyle='#3e2d20'; ctx.fillRect(0,H*0.72,W,H*0.28);
+  ctx.fillStyle='#4a3626'; for(var px=0;px<W;px+=90) ctx.fillRect(px,H*0.72,4,H*0.28);
+  var rugY=H*0.86; ctx.save(); ctx.translate(W/2,rugY); ctx.scale(1,0.22);
+  ['#7a3b2e','#b8865a','#4f6a5a','#8d4b3a','#c49b6c'].forEach(function(c,i){ ctx.fillStyle=c; ctx.beginPath(); ctx.arc(0,0,W*0.48-i*W*0.05,0,Math.PI*2); ctx.fill(); });
+  ctx.restore();
+  // lamp glow from the left
+  var lg=ctx.createRadialGradient(W*0.06,H*0.3,10,W*0.06,H*0.3,W*0.5); lg.addColorStop(0,'rgba(247,207,122,.35)'); lg.addColorStop(1,'rgba(247,207,122,0)'); ctx.fillStyle=lg; ctx.fillRect(0,0,W,H);
+}
+function drawTV(){
+  var x=TV.x,y=TV.y,w=TV.w,h=TV.h;
+  // legs
+  ctx.fillStyle='#2e1e12'; [0.08,0.88].forEach(function(f){ ctx.fillRect(x+w*f,y+h*0.96,w*0.04,h*0.1); });
+  // cabinet wood
+  var wg=ctx.createLinearGradient(x,y,x,y+h); wg.addColorStop(0,'#8a5a32'); wg.addColorStop(1,'#5e3b1f'); ctx.fillStyle=wg; rr(x,y,w,h,18); ctx.fill();
+  ctx.strokeStyle='rgba(40,24,12,.35)'; ctx.lineWidth=2; for(var i=1;i<9;i++){ ctx.beginPath(); ctx.moveTo(x+10,y+h*i/9); ctx.bezierCurveTo(x+w*0.3,y+h*i/9+6,x+w*0.7,y+h*i/9-6,x+w-10,y+h*i/9); ctx.stroke(); }
+  // speaker grille on the right
+  var gx=TV.sx+TV.sw+w*0.05, gw=x+w-gx-w*0.05;
+  ctx.fillStyle='#3a2a1c'; rr(gx,TV.sy,gw,TV.sh*0.62,8); ctx.fill();
+  ctx.strokeStyle='#5a4330'; ctx.lineWidth=2; for(var gy=TV.sy+8;gy<TV.sy+TV.sh*0.62-4;gy+=7){ ctx.beginPath(); ctx.moveTo(gx+6,gy); ctx.lineTo(gx+gw-6,gy); ctx.stroke(); }
+  // two dials
+  [0.74,0.9].forEach(function(f){ var dx=gx+gw/2, dy=TV.sy+TV.sh*f, r=Math.min(gw*0.28,TV.sh*0.08);
+    ctx.fillStyle='#d9c9a8'; ctx.beginPath(); ctx.arc(dx,dy,r,0,Math.PI*2); ctx.fill(); ctx.strokeStyle='#3a2a1c'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(dx,dy); ctx.lineTo(dx+r*0.7,dy-r*0.4); ctx.stroke(); });
+  // screen bezel
+  ctx.fillStyle='#1d1a16'; rr(TV.sx-10,TV.sy-10,TV.sw+20,TV.sh+20,30); ctx.fill();
+  // the game, scaled up with chunky pixels
+  ctx.save(); rr(TV.sx,TV.sy,TV.sw,TV.sh,26); ctx.clip();
+  ctx.imageSmoothingEnabled=false; ctx.drawImage(scr,TV.sx,TV.sy,TV.sw,TV.sh);
+  // soft scanlines (still, no flicker) and curved-glass shine
+  ctx.fillStyle='rgba(0,0,0,.16)'; var step=TV.sh/SH; for(var s=0;s<SH;s++) ctx.fillRect(TV.sx,TV.sy+s*step+step*0.6,TV.sw,step*0.3);
+  var vg=ctx.createRadialGradient(TV.sx+TV.sw/2,TV.sy+TV.sh/2,TV.sh*0.3,TV.sx+TV.sw/2,TV.sy+TV.sh/2,TV.sw*0.62); vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,.55)'); ctx.fillStyle=vg; ctx.fillRect(TV.sx,TV.sy,TV.sw,TV.sh);
+  ctx.fillStyle='rgba(255,255,255,.05)'; ctx.beginPath(); ctx.ellipse(TV.sx+TV.sw*0.3,TV.sy+TV.sh*0.2,TV.sw*0.25,TV.sh*0.1,-0.2,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+  // a warm glow from the screen onto the rug
+  var gl=ctx.createRadialGradient(TV.sx+TV.sw/2,y+h+30,10,TV.sx+TV.sw/2,y+h+30,w*0.6); gl.addColorStop(0,'rgba(239,230,207,.12)'); gl.addColorStop(1,'rgba(239,230,207,0)'); ctx.fillStyle=gl; ctx.fillRect(0,y+h-20,W,H);
+  // popcorn bowl
+  var bx=x+w*0.08, by=y+h+H*0.07; ctx.fillStyle='#b9473b'; ctx.beginPath(); ctx.ellipse(bx,by,34,14,0,0,Math.PI); ctx.fill(); ctx.fillStyle='#f1e3be'; for(var k=0;k<14;k++){ ctx.beginPath(); ctx.arc(bx-26+k*4,by-4-Math.abs(Math.sin(k*1.7))*8,5,0,Math.PI*2); ctx.fill(); }
+}
+function drawJoystick(tilt, x, y, s, label){
+  if(IMG.joystick){ var sz=150*s; ctx.save(); ctx.translate(x,y); ctx.rotate(tilt*0.25); ctx.drawImage(IMG.joystick,-sz/2,-sz,sz,sz); ctx.restore(); return; }
+  ctx.save(); ctx.translate(x,y);
+  // cord curling back to the TV
+  ctx.strokeStyle='#151515'; ctx.lineWidth=4*s; ctx.beginPath(); ctx.moveTo(-30*s,-20*s); ctx.bezierCurveTo(-70*s,-10*s,-60*s,-70*s,-110*s,-60*s); ctx.stroke();
+  // base
+  ctx.fillStyle='rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(6*s,4*s,52*s,14*s,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#1f1f1f'; rr(-46*s,-40*s,92*s,40*s,8*s); ctx.fill();
+  ctx.fillStyle='#2c2c2c'; rr(-46*s,-48*s,92*s,14*s,6*s); ctx.fill();
+  // red button flashes when the ball is hit
+  ctx.fillStyle= pressFlash>0 ? '#ff6b5b' : '#c2262e'; ctx.beginPath(); ctx.ellipse(-28*s,-46*s,10*s,5*s,0,0,Math.PI*2); ctx.fill();
+  // stick tilts forward and back with the paddle
+  ctx.save(); ctx.translate(8*s,-46*s); ctx.rotate(tilt*0.45);
+  ctx.fillStyle='#111'; rr(-5*s,-62*s,10*s,62*s,4*s); ctx.fill();
+  ctx.fillStyle='#262626'; ctx.beginPath(); ctx.ellipse(0,0,14*s,6*s,0,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+  ctx.restore();
+}
+function drawScreen(){ if(game==='pin') return drawPin(); if(game==='maze') return drawMaze(); if(game==='bricks') return drawBricks(); if(game==='snow') return drawSnow(); drawPong(); }
+function drawPong(){
+  sx.fillStyle=BG; sx.fillRect(0,0,SW,SH);
+  sx.fillStyle=FG;
+  for(var y=2;y<SH;y+=6) sx.fillRect(SW/2-1,y,2,3);
+  digit(G.p1.score, SW/2-22, 6, 3); digit(G.p2.score, SW/2+13, 6, 3);
+  sx.fillRect(8,Math.round(G.p1.y-G.p1.h/2),3,G.p1.h);
+  sx.fillRect(SW-11,Math.round(G.p2.y-G.p2.h/2),3,G.p2.h);
+  if(G.wait<=0 && !G.over){ sx.fillRect(Math.round(G.ball.x-1.5),Math.round(G.ball.y-1.5),3,3); }
+}
+function draw(){
+  drawScreen(); drawRoom(); drawTV();
+  if(mode===2 && game==='pong'){ drawJoystick(joyTilt, Math.max(60*JOY.s, TV.x-20*JOY.s), JOY.y, JOY.s); drawJoystick(joyTilt2, JOY.x, JOY.y, JOY.s); }
+  else drawJoystick(joyTilt, JOY.x, JOY.y, JOY.s);
+}
+
+/* ---------- loop ---------- */
+function frame(ts){ if(!running) { draw(); return; } var dt=Math.max(0,Math.min(0.05,(ts-last)/1000||0)); last=ts; if(!paused){ update(dt); pressFlash=Math.max(0,pressFlash-dt); } draw(); requestAnimationFrame(frame); }
+function setTouch(){
+  var wide=game!=='pong', t=$('touch'); t.classList.toggle('wide',wide);
+  $('upBtn').textContent=wide?'Left':'Up'; $('upBtn').setAttribute('aria-label',wide?'Move left':'Paddle up');
+  $('downBtn').textContent=wide?'Right':'Down'; $('downBtn').setAttribute('aria-label',wide?'Move right':'Paddle down');
+  $('fireBtn').hidden = game!=='snow'; $('launchBtn').hidden = game!=='pin';
+  var mz=game==='maze', pn=game==='pin'; $('lBtn').hidden=!(mz||pn); $('rBtn').hidden=!(mz||pn); $('upBtn').hidden=pn; $('downBtn').hidden=pn;
+  $('lBtn').textContent=pn?'Left flipper':'Left'; $('rBtn').textContent=pn?'Right flipper':'Right';
+  if(mz){ $('upBtn').textContent='Up'; $('upBtn').setAttribute('aria-label','Walk up'); $('downBtn').textContent='Down'; $('downBtn').setAttribute('aria-label','Walk down'); }
+}
+function setNext(on){ NEXT=!!on; $('againBtn').textContent= on ? 'Play level '+(LEVEL+1) : 'Play again'; }
+function start(m, keep){
+  if(!keep) LEVEL=+S.lvl||1;
+  game='pong'; setTouch();
+  newGame(m); $('startOver').hidden=true; $('endOver').hidden=true; paused=false; $('pauseBtn').setAttribute('aria-pressed','false'); $('pauseBtn').textContent='Pause';
+  gameMusic('pong'); beep(392,0.08,'square',0.05); setTimeout(function(){ if(running) claraSay(keep?'level':'start',0.8); },1200); caption((m===1?'Level '+LEVEL+'. ':'')+'[The TV hums on] First to 7 points.',2400);
+  running=true; last=performance.now(); requestAnimationFrame(frame);
+  cv.focus();   // so the arrow keys reach the game straight away
+}
+function togglePause(){ if(!running) return; paused=!paused; $('pauseBtn').setAttribute('aria-pressed',paused?'true':'false'); $('pauseBtn').textContent=paused?'Paused':'Pause'; if(paused){ tvMusic.pause(); caption('Paused. Press Pause again to keep playing.',3000); } else if(S.music==='on' && tvMusic.getAttribute('src')){ var p=tvMusic.play(); if(p&&p.catch) p.catch(function(){}); } }
+$('oneBtn').addEventListener('click',function(){ start(1); });
+$('twoBtn').addEventListener('click',function(){ start(2); });
+$('bricksBtn').addEventListener('click',function(){ startArcade('bricks'); });
+$('snowBtn').addEventListener('click',function(){ startArcade('snow'); });
+$('mazeBtn').addEventListener('click',function(){ startArcade('maze'); });
+$('againBtn').addEventListener('click',function(){ var nx=NEXT; if(nx) LEVEL++; if(game==='pong') start(mode,nx); else startArcade(game,nx); });
+$('pinBtn').addEventListener('click',function(){ startArcade('pin'); });
+$('menuBtn').addEventListener('click',function(){ LEVEL=+S.lvl||1; $('endOver').hidden=true; $('startOver').hidden=false; game='pong'; newGame(1); setTouch(); draw(); $('oneBtn').focus(); });
+$('pauseBtn').addEventListener('click',togglePause);
+$('setBtn').addEventListener('click',function(){ if(running&&!paused) togglePause(); $('setOver').hidden=false; $('setDone').focus(); });
+$('setDone').addEventListener('click',function(){ $('setOver').hidden=true; });
+
+/* testing helper: step the game by hand */
+window.tvStep=function(n,p1y){ for(var i=0;i<n&&running;i++){ if(p1y==='track') G.p1.y=G.ball.y; else if(typeof p1y==='number') G.p1.y=G.ball.y+p1y; update(1/60); } draw(); return {you:G.p1.score, cpu:G.p2.score, over:G.over}; };
+
+resize(); newGame(1); apply(); draw();
+})();
+</script>
+<script>/* SMALL-SCREEN start (tools/small_screen.py): Hide panels, Box size, Speech boxes */
+(function(){
+  var r=document.documentElement, P='tv-';
+  function g(k){ try{ return localStorage.getItem(P+k); }catch(e){ return null; } }
+  function s(k,v){ try{ localStorage.setItem(P+k,v); }catch(e){} }
+  var small=(innerWidth<760 || innerHeight<560);
+  var st={ panels:g('panels')||(small?'folded':'open'), box:g('box')||(small?'s':'m'), words:g('wordsbox')||'on' };
+  var bar=document.querySelector('.bar'), btn=document.createElement('button'); btn.id='panelsBtn'; btn.type='button';
+  bar.insertBefore(btn, bar.firstChild);
+  btn.addEventListener('click',function(){ st.panels= st.panels==='folded'?'open':'folded'; s('panels',st.panels); apply(); btn.blur(); });
+  var rows=[['panels','Panels (top bar and buttons)',[['open','Full size'],['folded','Folded small']]],
+            ['box','Speech box size',[['s','Small'],['m','Medium'],['l','Large']]]];
+  if(true) rows.push(['words','Speech boxes',[['on','Show the words'],['off','Voice only']]]);
+  var done=document.getElementById('setDone').closest('.row');
+  rows.forEach(function(row){ var d=document.createElement('div'); d.className='set';
+    d.innerHTML='<b>'+row[1]+'</b><div class="seg" data-k2="'+row[0]+'">'+row[2].map(function(o){ return '<button type="button" data-v2="'+o[0]+'">'+o[1]+'</button>'; }).join('')+'</div>';
+    done.parentNode.insertBefore(d,done);
+    d.querySelector('.seg').addEventListener('click',function(e){ var b=e.target.closest('button'); if(!b) return; st[row[0]]=b.dataset.v2; s(row[0]==='words'?'wordsbox':row[0],b.dataset.v2); apply(); }); });
+  function apply(){
+    r.classList.toggle('compact', st.panels==='folded'); r.setAttribute('data-box',st.box); r.classList.toggle('nobox', st.words==='off');
+    btn.textContent= st.panels==='folded' ? 'Show panels' : 'Hide panels'; btn.setAttribute('aria-expanded', st.panels==='folded'?'false':'true');
+    document.querySelectorAll('.seg[data-k2]').forEach(function(seg){ seg.querySelectorAll('button').forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.v2===st[seg.dataset.k2]?'true':'false'); }); });
+    setTimeout(function(){ dispatchEvent(new Event('resize')); },30);
+  }
+  apply();
+})();
+/* SMALL-SCREEN end */</script>

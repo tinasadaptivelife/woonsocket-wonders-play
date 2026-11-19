@@ -1,0 +1,593 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>River Hill Sledding</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Playfair+Display:wght@700&display=swap">
+<style>
+/* Layout: a one-screen game. Big control bar on top, the drone's view of River Hill below, captions over the view. */
+:root {
+  --page:#2b2b2b; --panel:#363636; --well:#242424; --ink:#ece6da; --muted:#cfc6b6; --line:#8a8070;
+  --holly:#a8d8b4; --holly-tint:#2f4a3a; --lamp:#f5cf85; --lamp-tint:#4a3f2b; --berry:#f4a6a6; --berry-tint:#4f2f31;
+  --scrim:#1a1816; --cap:#f6eedc; --focus:#f5cf85;
+  --read:"Atkinson Hyperlegible","Segoe UI",Verdana,sans-serif; --title:"Playfair Display",Georgia,serif;
+  --scale:1; color-scheme: dark;
+}
+:root[data-look="sand"] { --page:#d6ccb5; --panel:#e4dac4; --well:#cbbfa4; --ink:#111111; --muted:#3a332b; --line:#4a4038; --holly:#1f4a30; --holly-tint:#cfe0cc; --lamp:#6b4510; --lamp-tint:#f3ddae; --berry:#8e1f25; --berry-tint:#f0cfc8; --focus:#1f4a30; color-scheme: light; }
+:root[data-look="light"] { --page:#e9e2d2; --panel:#f1ebdd; --well:#ddd4c0; --ink:#111111; --muted:#3a332b; --line:#4a4038; --holly:#1f4a30; --holly-tint:#cfe0cc; --lamp:#6b4510; --lamp-tint:#f3ddae; --berry:#8e1f25; --berry-tint:#f0cfc8; --focus:#1f4a30; color-scheme: light; }
+:root[data-look="contrast"] { --page:#c9c9c9; --panel:#d9d9d9; --well:#bdbdbd; --ink:#000; --muted:#1a1a1a; --line:#000; --holly:#0e3320; --holly-tint:#b8d4bc; --lamp:#4a2e00; --lamp-tint:#e9cf92; --berry:#6a0f14; --berry-tint:#e8b9b9; --focus:#000; color-scheme: light; }
+html, body { height: 100%; }
+html { font-size: calc(20px * var(--scale)); }
+body { margin:0; background:var(--page); color:var(--ink); font:400 1rem/1.5 var(--read); overflow:hidden; }
+body::before { content:""; position:fixed; inset:0 0 auto; height:env(safe-area-inset-top,0px); z-index:10; background:var(--panel); }
+.app { height:100%; display:grid; grid-template-rows:auto 1fr; }
+.bar { background:var(--panel); border-bottom:3px solid var(--line); padding-block:8px; padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center; }
+.home { font-weight:700; font-size:1.05rem; color:var(--ink); background:var(--well); border:3px solid var(--line); border-radius:12px; padding:6px 12px; text-decoration:none; }
+.home:focus-visible { outline:4px solid var(--focus); outline-offset:2px; }
+.bar h1 { margin:0; font:700 1.3rem/1.1 var(--title); color:var(--holly); margin-right:auto; }
+.stat { display:flex; align-items:center; gap:8px; font-weight:700; font-variant-numeric:tabular-nums; }
+.meter { width:140px; height:20px; border:3px solid var(--line); border-radius:999px; background:var(--well); overflow:hidden; }
+.meter > i { display:block; height:100%; width:0; background:var(--holly); }
+button { font:700 0.9rem/1.2 var(--read); color:var(--ink); background:var(--well); border:3px solid var(--line); border-radius:12px; min-height:52px; min-width:52px; padding:0 16px; cursor:pointer; }
+button.primary { background:var(--holly-tint); border-color:var(--holly); }
+button[aria-pressed="true"] { background:var(--holly-tint); border-color:var(--holly); }
+button[aria-pressed="true"]::before { content:"\2713  "; }
+button:focus-visible { outline:3px solid var(--focus); outline-offset:3px; }
+.stage { position:relative; min-height:0; }
+canvas { display:block; width:100%; height:100%; touch-action:none; }
+.cap { position:absolute; left:50%; bottom:calc(16px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%); max-width:min(900px, calc(100% - 32px)); background:var(--scrim); color:var(--cap); font:700 1.1rem/1.45 var(--read); padding:12px 24px; border-radius:12px; text-align:center; }
+.steer { position:absolute; bottom:calc(96px + env(safe-area-inset-bottom,0px)); display:none; width:88px; height:88px; font-size:1.1rem; border-radius:999px; }
+.steer.l { left:max(16px,env(safe-area-inset-left,0px)); } .steer.r { right:max(16px,env(safe-area-inset-right,0px)); }
+@media (pointer:coarse) { .steer { display:block; } }
+.drone { position:absolute; top:12px; left:max(12px,env(safe-area-inset-left,0px)); display:flex; align-items:center; gap:8px; padding:4px 16px 4px 4px; background:var(--panel); border:3px solid var(--line); border-radius:999px; font-weight:700; }
+.drone[hidden] { display:none; }
+.drone img { width:60px; height:52px; object-fit:contain; }
+.over { position:absolute; inset:0; display:grid; place-items:safe center; padding:24px max(16px,env(safe-area-inset-left,0px)); background:rgba(20,18,16,.55); overflow:auto; }
+.over[hidden] { display:none; }
+.sheet { width:min(860px,100%); background:var(--panel); border:3px solid var(--line); border-radius:18px; overflow:hidden; display:grid; }
+.sheet img.art { width:100%; aspect-ratio:16/8; object-fit:cover; display:block; border-bottom:3px solid var(--line); }
+.sheet .in { padding:24px; display:grid; gap:14px; }
+.sheet h2 { margin:0; font:700 2rem/1.1 var(--title); color:var(--holly); text-wrap:balance; }
+.sheet p { margin:0; max-width:62ch; }
+.sheet ul { margin:0; padding-left:1.2em; display:grid; gap:6px; }
+.row { display:flex; flex-wrap:wrap; gap:12px; }
+.set { display:grid; gap:8px; padding:12px; background:var(--well); border-radius:12px; }
+.set b { font-size:1rem; }
+.seg { display:flex; flex-wrap:wrap; gap:8px; }
+.big { font-size:1.6rem; font-weight:700; color:var(--lamp); }
+.note { color:var(--muted); }
+.clara { position:absolute; top:14px; right:max(14px,env(safe-area-inset-right,0px)); max-width:min(460px,calc(100% - 28px)); background:var(--panel); border:3px solid var(--line); border-radius:16px; padding:10px 16px; z-index:3; }
+.clara[hidden] { display:none; }
+.clara { display:flex; gap:12px; align-items:center; }
+.clara[hidden] { display:none; }
+.spk { width:72px; height:72px; border-radius:12px; border:3px solid var(--line); object-fit:cover; flex:none; }
+.spk[hidden] { display:none; }
+
+.clara b { display:block; color:#9fc0f0; font-size:1rem; }
+:root[data-look] .clara b { color:#1d3f78; }
+.clara p { margin:0; font-size:1.1rem; line-height:1.4; }
+/* SMALL-SCREEN start (tools/small_screen.py) */
+#panelsBtn { white-space:nowrap; }
+:root.compact .bar { padding-block:4px; gap:6px 10px; }
+:root.compact .bar > :not(#panelsBtn):not(#pauseBtn):not(.score) { display:none !important; }
+:root.compact .bar button { min-height:44px; padding:0 12px; font-size:0.8rem; }
+:root.compact .bar .score { font-size:0.85rem; margin-right:auto; }
+:root.compact .foot { padding-block:4px calc(4px + env(safe-area-inset-bottom,0px)); gap:6px; }
+:root.compact .foot button { min-height:44px; min-width:44px; padding:0 10px; font-size:0.8rem; }
+:root.compact .foot .shoot { min-width:120px; min-height:48px; }
+:root.compact .foot .hint { display:none; }
+:root.compact .dad,:root.compact .talk,:root.compact .joe,:root.compact .clara,:root.compact .say { top:auto !important; bottom:8px; left:8px; right:8px; max-width:none; padding:6px 12px; border-radius:12px; gap:8px; }
+:root.compact .dad img,:root.compact .talk img,:root.compact .joe img,:root.compact .clara img,:root.compact .say img { display:none; }
+:root.compact .dad small,:root.compact .talk small,:root.compact .joe small,:root.compact .clara small,:root.compact .say small { display:none; }
+:root.compact .cap { bottom:auto; top:8px; }
+:root[data-box="s"] .dad p,:root[data-box="s"] .talk p,:root[data-box="s"] .joe p,:root[data-box="s"] .clara p,:root[data-box="s"] .say p, :root[data-box="s"] .cap { font-size:0.85rem; line-height:1.35; }
+:root[data-box="s"] .dad b,:root[data-box="s"] .talk b,:root[data-box="s"] .joe b,:root[data-box="s"] .clara b,:root[data-box="s"] .say b { font-size:0.8rem; }
+:root[data-box="l"] .dad p,:root[data-box="l"] .talk p,:root[data-box="l"] .joe p,:root[data-box="l"] .clara p,:root[data-box="l"] .say p, :root[data-box="l"] .cap { font-size:1.3rem; }
+:root.nobox .dad,:root.nobox .talk,:root.nobox .joe,:root.nobox .clara,:root.nobox .say { display:none !important; }
+/* SMALL-SCREEN end */
+</style>
+
+<div class="app">
+  <header class="bar">
+    <a class="home" id="homeLink" href="../" hidden>&larr; All games</a>
+    <h1>Sledding on River Hill</h1>
+    <span class="stat" aria-live="polite"><span>Snowballs</span><span id="count">0</span></span>
+    <span class="stat"><span>To the river</span><span class="meter" role="progressbar" aria-label="Distance to the river" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="meter"><i id="fill"></i></span></span>
+    <button id="pauseBtn" aria-pressed="false">Pause</button>
+    <button id="setBtn">Settings</button>
+  </header>
+  <div class="stage" id="stage">
+    <canvas id="cv" aria-label="Drone view of Clara sledding down River Hill with Bernie running beside her"></canvas>
+    <div class="drone" id="droneBadge" hidden><img src="art/drone.png" alt="">Drone camera</div>
+    <div class="clara" id="claraBox" hidden><img class="spk" src="art/clara-face.jpg" alt="Clara, chestnut braids and rosy cheeks, from Tina’s Storykeeper film"><div><b>Clara</b><p id="claraLine"></p></div></div>
+    <p class="cap" id="cap" hidden></p>
+    <button class="steer l" id="leftBtn" aria-label="Steer left">Left</button>
+    <button class="steer r" id="rightBtn" aria-label="Steer right">Right</button>
+
+    <div class="over" id="startOver">
+      <div class="sheet">
+        <img class="art" id="startArt" src="art/town-from-drone.jpg" alt="The spiral drone floating above snowy Woonsocket at twilight, with River Hill running down to the Blackstone River">
+        <div class="in">
+          <h2>Sledding on River Hill</h2>
+          <p>The long slope from River Street runs down, down, down to the Blackstone River. The drone will watch from above while Clara and Bernie slide.</p>
+          <ul>
+            <li>Steer with the <b>left and right arrow keys</b>, or drag on the snow.</li>
+            <li><b>Up arrow</b> goes faster. <b>Down arrow</b> goes slower.</li>
+            <li>Burst through snowballs. Bushes just give a soft bump.</li>
+            <li>There is no timer and no way to lose.</li>
+          </ul>
+          <div class="row">
+            <button class="primary" id="startBtn">Start sledding</button>
+            <button id="narrBtn">Hear the narrator</button>
+          </div>
+          <p class="note">Voices are AI-generated. The narrator is from The Woonsocket Wonders, Episode 1.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="over" id="endOver" hidden>
+      <div class="sheet">
+        <img class="art" id="endArt" src="art/town-from-drone.jpg" alt="Snowy Woonsocket at twilight beside the Blackstone River">
+        <video class="art" id="endVid" src="art/river-hill-finish.mp4" muted loop playsinline preload="none" hidden aria-label="Snow falling softly by the river and the mill at twilight"></video>
+        <div class="in">
+          <h2>You reached the Blackstone River</h2>
+          <p class="big" id="endCount">0 snowballs burst</p>
+          <p id="endNote">Bernie is very proud of you.</p>
+          <div class="row">
+            <button class="primary" id="againBtn">Slide again</button>
+            <button id="townBtn">Back to the top</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="over" id="setOver" hidden>
+      <div class="sheet"><div class="in">
+        <h2>Settings</h2>
+        <div class="set"><b>Look</b><div class="seg" data-key="look">
+          <button data-v="dusk">Dark soft</button><button data-v="sand">Dim sand</button><button data-v="light">Light</button><button data-v="contrast">Extra contrast</button></div></div>
+        <div class="set"><b>Text size</b><div class="seg" data-key="size">
+          <button data-v="1">Large</button><button data-v="1.2">Larger</button><button data-v="1.4">Largest</button></div></div>
+        <div class="set"><b>Music</b><div class="seg" data-key="music"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="set"><b>Sounds</b><div class="seg" data-key="sfx"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="set"><b>Drone camera label on screen</b><div class="seg" data-key="drone"><button data-v="off">Hide</button><button data-v="on">Show</button></div></div>
+        <div class="set"><b>Clara's voice</b><div class="seg" data-key="voice"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="set"><b>Sound captions</b><div class="seg" data-key="caps"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="set"><b>Calm motion (no falling snow, gentler speed)</b><div class="seg" data-key="calm"><button data-v="off">Off</button><button data-v="on">On</button></div></div>
+        <div class="row"><button class="primary" id="setDone">Done</button></div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+document.getElementById('homeLink').hidden=false;
+var $ = function(id){ return document.getElementById(id); };
+var root = document.documentElement;
+function lget(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+function lset(k,v){ try { localStorage.setItem(k,v); } catch(e){} }
+
+/* ---------- settings ---------- */
+var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+var S = { voice: lget('rh-voice')||'on', look: lget('rh-look')||'dusk', size: lget('rh-size')||'1', music: lget('rh-music')||'on', sfx: lget('rh-sfx')||'on', caps: lget('rh-caps')||'on', drone: lget('rh-drone')||'off', calm: lget('rh-calm')||(reduce?'on':'off') };
+function applySettings(){
+  if (S.look==='dusk') root.removeAttribute('data-look'); else root.setAttribute('data-look',S.look);
+  root.style.setProperty('--scale', S.size);
+  document.querySelectorAll('.seg[data-key]').forEach(function(seg){
+    seg.querySelectorAll('button').forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.v===S[seg.dataset.key] ? 'true':'false'); });
+  });
+  A.music.volume = S.music==='on' ? 0.28 : 0;
+  if (S.caps!=='on') $('cap').hidden = true;
+  $('droneBadge').hidden = S.drone!=='on';
+  resize();
+}
+document.querySelectorAll('.seg[data-key]').forEach(function(seg){
+  seg.addEventListener('click', function(e){ var b=e.target.closest('button'); if(!b) return; S[seg.dataset.key]=b.dataset.v; lset('rh-'+seg.dataset.key,b.dataset.v); applySettings(); });
+});
+
+/* ---------- sound ---------- */
+function snd(src, loop, vol){ var a=new Audio(src); a.loop=!!loop; a.volume=vol==null?1:vol; a.preload='auto'; return a; }
+var A = {
+  music: snd('audio/music-before-the-snow-melts.mp3', true, 0.28),   // runs take turns: Before the Snow Melts, then Tina's Sledding on the River (2026-11-18)
+  glide: snd('audio/sfx/sled-glide.mp3', true, 0),
+  river: snd('audio/sfx/river-long.mp3', true, 0),
+  narr: snd('audio/voice/narrator-river-hill.mp3', false, 1),
+  best: snd('audio/voice/narrator-best-hill.mp3', false, 1)
+};
+var oneShots = { poof:'audio/sfx/snow-poof.mp3', woof:'audio/sfx/bernie-woof.mp3', whuff:'audio/sfx/bernie-whuff.mp3', brush:'audio/sfx/bush-brush.mp3', chime:'audio/sfx/finish-chime.mp3' };
+function play(name, vol){ if (S.sfx!=='on') return; var a=new Audio(oneShots[name]); a.volume=vol==null?0.8:vol; a.play().catch(function(){}); }
+function safePlay(a){ var p=a.play(); if(p&&p.catch) p.catch(function(){}); }
+var capTimer=null, runNo=0;
+function caption(text, ms){
+  if (S.caps!=='on') return;
+  var c=$('cap'); c.textContent=text; c.hidden=false;
+  clearTimeout(capTimer); capTimer=setTimeout(function(){ c.hidden=true; }, ms||2600);
+}
+
+var CLARA_SAYS={"start": ["Hold on, Bernie. Here we go!", "River Hill, here I come!"], "fast": ["Wheee! Faster!", "My cheeks are frozen!"], "snowball": ["Snowball! Bernie, fetch!"], "bush": ["Whoa! Sorry, bush."], "finish": ["Again! Let's go again!", "Best run ever."]};
+/* ---------- Clara talks: her podcast voice (Chatterbox), audio/voice/clara-<kind>-<n>.mp3, words in her box. A line never cuts another off. ---------- */
+var clV=null, clTill=0, clPick={}, clT=null;
+function claraSay(kind,chance){
+  if(chance!=null && Math.random()>chance) return;
+  if((clV && !clV.ended && !clV.paused) || Date.now()<clTill) return;
+  var list=CLARA_SAYS[kind]; if(!list) return;
+  var i=Math.floor(Math.random()*list.length); if(list.length>1 && i===clPick[kind]) i=(i+1)%list.length; clPick[kind]=i;
+  var t=list[i], ms=1600+t.split(/\s+/).length*450; clTill=Date.now()+ms;
+  $('claraLine').textContent=t; $('claraBox').hidden=false; clearTimeout(clT); clT=setTimeout(function(){ $('claraBox').hidden=true; },ms);
+  if(S.voice!=='off'){ var v=new Audio('audio/voice/clara-'+kind+'-'+(i+1)+'.mp3'); clV=v;
+    v.addEventListener('loadedmetadata',function(){ if(v===clV && isFinite(v.duration)){ var full=Math.max(ms,v.duration*1000+900); clTill=Date.now()+full; clearTimeout(clT); clT=setTimeout(function(){ $('claraBox').hidden=true; },full); } });
+    var p=v.play(); if(p&&p.catch) p.catch(function(){}); }
+}
+/* ---------- optional painted art from Google Flow (falls back to code drawing) ---------- */
+var IMG = {};
+['clara-sled','bernie-run','snowball','snowball-s','snowball-m','pine','bare-tree','holly-bush','lamp-post','hill-snow','river-from-above','otter'].forEach(function(n){
+  var i=new Image(); i.onload=function(){ IMG[n]=i; }; i.src='art/'+n+(n==='hill-snow'||n==='river-from-above'?'.jpg':'.png');
+});
+['river-hill-top','river-hill-bottom'].forEach(function(n){
+  var i=new Image(); i.onload=function(){ var el=$(n==='river-hill-top'?'startArt':'endArt'); el.src=i.src;
+    el.alt = n==='river-hill-top' ? 'Clara and Bernie at the top of River Hill with her sled, looking down at the Blackstone River and the mills at twilight' : 'An empty wooden sled at the bottom of River Hill beside the Blackstone River at twilight'; }; i.src='art/'+n+'.jpg';
+});
+
+/* ---------- canvas ---------- */
+var cv=$('cv'), ctx=cv.getContext('2d'), W=800, H=600, DPR=1, U=1;
+function resize(){
+  var r=$('stage').getBoundingClientRect(); DPR=Math.min(window.devicePixelRatio||1,2);
+  W=Math.max(320,r.width); H=Math.max(300,r.height); cv.width=W*DPR; cv.height=H*DPR;
+  ctx.setTransform(DPR,0,0,DPR,0,0); U=Math.min(1.7, Math.max(0.85, Math.min(W/700, H/520)));
+}
+window.addEventListener('resize', resize);
+
+/* ---------- world ---------- */
+var HILL = 16000;               // length of River Hill in world units
+var G = null, running=false, paused=false, last=0, flakes=[];
+function rnd(a,b){ return a+Math.random()*(b-a); }
+function center(y){ return Math.sin(y/1100)*0.5 + Math.sin(y/430)*0.12; }  // -0.62..0.62 of half width
+function halfW(){ return Math.min(W*0.42, 440*U); }
+function cx(y){ return W/2 + center(y)*Math.min(W*0.14, 160*U); }
+
+function newRun(){
+  G = { y:0, x:0, vx:0, speed:0, balls:[], deco:[], trail:[], parts:[], count:0, streak:0, bx:-60, by:-70, done:false, doneT:0, bump:0, nextWoof:rnd(6,14), t:0 };
+  // snowballs inside the hill, decorations along both edges
+  for (var y=900; y<HILL-400; y+=rnd(150,330)) {
+    var n = Math.random()<0.25 ? 2 : 1;
+    for (var k=0;k<n;k++) G.balls.push({ y:y+rnd(-40,40), off:rnd(-0.85,0.85), r:[16,22,30][Math.floor(Math.random()*3)], hit:false });
+  }
+  for (var y2=-600; y2<HILL+900; y2+=rnd(70,140)) {
+    var kinds=['pine','pine','bare','holly','lamp'];
+    [-1,1].forEach(function(side){ G.deco.push({ y:y2+rnd(-30,30), side:side, out:rnd(0.05,1.4), kind:kinds[Math.floor(Math.random()*kinds.length)], s:rnd(0.8,1.25) }); });
+  }
+  // a few holly bushes just inside the edges to bump into softly
+  for (var y3=1400; y3<HILL-600; y3+=rnd(700,1300)) G.deco.push({ y:y3, side:Math.random()<.5?-1:1, out:-0.12, kind:'holly', s:1, inside:true });
+  $('count').textContent='0'; setMeter(0);
+}
+function setMeter(p){ var v=Math.round(p*100); $('fill').style.width=v+'%'; $('meter').setAttribute('aria-valuenow',v); }
+
+/* ---------- input ---------- */
+var keys={}, drag=null, hold=0;
+addEventListener('keydown', function(e){
+  if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].indexOf(e.key)>-1 && running) e.preventDefault();
+  keys[e.key]=true;
+  if ((e.key==='p'||e.key==='P'||e.key==='Escape') && running) togglePause();
+});
+addEventListener('keyup', function(e){ keys[e.key]=false; });
+cv.addEventListener('pointerdown', function(e){ drag=e.offsetX; cv.setPointerCapture(e.pointerId); });
+cv.addEventListener('pointermove', function(e){ if(drag!==null) drag=e.offsetX; });
+cv.addEventListener('pointerup', function(){ drag=null; });
+cv.addEventListener('pointercancel', function(){ drag=null; });
+function holdBtn(id,dir){ var b=$(id);
+  b.addEventListener('pointerdown', function(e){ e.preventDefault(); hold=dir; });
+  ['pointerup','pointerleave','pointercancel'].forEach(function(ev){ b.addEventListener(ev, function(){ if(hold===dir) hold=0; }); });
+}
+holdBtn('leftBtn',-1); holdBtn('rightBtn',1);
+
+/* ---------- update ---------- */
+function update(dt){
+  var calm = S.calm==='on';
+  G.t += dt;
+  var base = (calm?230:300)*U;
+  var want = base * (keys.ArrowUp||keys.w ? 1.5 : 1) * (keys.ArrowDown||keys.s ? 0.55 : 1);
+  if (G.done) want = 0;
+  G.speed += (want - G.speed) * Math.min(1, dt*(G.done?1.6:1.2));
+  G.y += G.speed*dt;
+
+  // steering
+  var steer = (keys.ArrowLeft||keys.a ? -1:0) + (keys.ArrowRight||keys.d ? 1:0) + hold;
+  var sx = cx(G.y) + G.x;
+  if (drag!==null) { steer = Math.max(-1, Math.min(1, (drag - sx)/(60*U))); }
+  G.vx += steer * 900*U*dt; G.vx *= Math.pow(0.08, dt); G.x += G.vx*dt;
+  var hw=halfW()-26*U;
+  if (G.x < -hw) { G.x=-hw; G.vx=Math.abs(G.vx)*0.4; }
+  if (G.x > hw) { G.x=hw; G.vx=-Math.abs(G.vx)*0.4; }
+
+  // trail
+  if (!G.done) { G.trail.push({ y:G.y, x:G.x }); if (G.trail.length>400) G.trail.shift(); }
+
+  // Bernie follows with a lag
+  // Bernie chases beside the sled, well off to one side and a little behind, never under it
+  // he keeps his side until Clara gets close to that edge, so he does not cut across under the sled
+  if (!G.side) G.side = 1;    // he starts on the right side (Tina, 2026-11-17)
+  if (G.side<0 && G.x < -halfW()*0.35) G.side = 1; else if (G.side>0 && G.x > halfW()*0.35) G.side = -1;
+  var lim = halfW()-40*U, tx = G.side*150*U, ty = 95*U;
+  tx = Math.max(-lim-G.x, Math.min(lim-G.x, tx));   // stay on the hill (G.bx is measured from the sled)
+  G.bx += (tx - G.bx)*Math.min(1,dt*3); G.by += (ty - G.by)*Math.min(1,dt*2);
+
+  // snowballs
+  for (var i=0;i<G.balls.length;i++){
+    var b=G.balls[i]; if (b.hit) continue;
+    var by=b.y, bx=b.off*halfW()*0.9 + center(by)*0;  // relative to hill centre
+    var dy=by-G.y; if (dy<-60*U || dy>60*U) continue;
+    var dx=(cx(by)+b.off*halfW()*0.9) - (cx(G.y)+G.x);
+    if (Math.abs(dx) < (b.r+18)*U && Math.abs(dy) < (b.r+24)*U) {
+      b.hit=true; G.count++; G.streak++; $('count').textContent=G.count;
+      play('poof', 0.75); burst(cx(by)+b.off*halfW()*0.9, by, calm?8:22);
+      if (G.count===1) caption('[A snowball bursts into powder]', 2200); else if (G.count%9===0) claraSay('snowball',0.6);
+      if (G.streak%6===0) { play('woof',0.7); caption('[Bernie woofs happily]', 2000); }
+    }
+  }
+  // bushes inside the edges: a soft bump
+  for (var j=0;j<G.deco.length;j++){
+    var d=G.deco[j]; if (!d.inside || d.bumped) continue;
+    var ddy=d.y-G.y; if (Math.abs(ddy)>40*U) continue;
+    var dxp=decoX(d) - (cx(G.y)+G.x);
+    if (Math.abs(dxp)<40*U){ d.bumped=true; G.vx += (dxp>0?-1:1)*260*U; play('brush',0.7); caption('[Soft bump. Snow slides off the holly bush]', 2400); claraSay('bush',0.6); }
+  }
+  // Bernie barks now and then
+  G.nextWoof -= dt; if (G.nextWoof<=0){ G.nextWoof=rnd(12,22); if(!G.done){ if(Math.random()<0.5){ play('whuff',0.7); caption('[Bernie gives a soft, happy whuff]',1800); } else { play('woof',0.55); caption('[Bernie woofs as he runs]',1800); } } }
+
+  // particles
+  for (var p=G.parts.length-1;p>=0;p--){ var q=G.parts[p]; q.t-=dt; q.x+=q.vx*dt; q.y+=q.vy*dt; q.vx*=0.94; q.vy*=0.94; if(q.t<=0) G.parts.splice(p,1); }
+
+  // sounds follow speed and the river
+  A.glide.volume = S.sfx==='on' ? Math.max(0, Math.min(0.55, G.speed/(400*U)*0.55)) : 0;
+  var near = Math.max(0, Math.min(1, (G.y-(HILL-3000))/3000));
+  A.river.volume = S.sfx==='on' ? near*0.5 : 0;
+
+  setMeter(Math.min(1, G.y/HILL));
+  if (!G.done && G.y >= HILL) { G.done=true; G.doneT=0; caption('[Sled slows to a stop by the river]', 2600); claraSay('finish'); }
+  if (!G.done && (keys.ArrowUp||keys.w) && G.t-(G.fastT||-99)>14){ G.fastT=G.t; claraSay('fast',0.5); }
+  if (G.done) { G.doneT+=dt; if (G.doneT>2.2 && !$('endOver').dataset.shown) finish(); }
+}
+function decoX(d){ var hw=halfW(); return cx(d.y) + d.side*(hw + (d.inside? -0.2*hw : 30*U + d.out*80*U)); }
+function burst(x,y,n){ for(var i=0;i<n;i++){ var a=rnd(0,Math.PI*2), s=rnd(60,240)*U; G.parts.push({x:x,y:y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,t:rnd(.35,.8),r:rnd(2,5)*U}); } }
+
+/* ---------- draw ---------- */
+var snowPattern=null;
+function draw(){
+  // the drone follows from behind: Clara sits low in the view and slides up toward the river
+  var SLED_Y = H*0.68;
+  var sy = function(y){ return SLED_Y - (y - G.y); };
+  var wyOf = function(s){ return G.y + SLED_Y - s; };
+  // banks beyond the hill
+  var g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'#8f8aa8'); g.addColorStop(1,'#a397a6');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  // the hill run
+  var step=16*U;
+  ctx.beginPath();
+  for (var y=-step; y<=H+step; y+=step){ var wy=wyOf(y); var x=cx(wy)-halfW(); if(y===-step) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
+  for (var y2=H+step; y2>=-step; y2-=step){ var wy2=wyOf(y2); ctx.lineTo(cx(wy2)+halfW(), y2); }
+  ctx.closePath();
+  if (IMG['hill-snow']) {
+    var im=IMG['hill-snow'], sc=Math.max(W, halfW()*2+400*U)/im.width, th=im.height*sc, off=((G.y % th)+th)%th;
+    ctx.save(); ctx.clip();
+    var left=(W-im.width*sc)/2;
+    for (var ty0=off-th; ty0<H; ty0+=th) ctx.drawImage(im, left, ty0, im.width*sc, th+1);
+    ctx.restore();
+  }
+  else { var sg=ctx.createLinearGradient(0,0,0,H); sg.addColorStop(0,'#c9c6da'); sg.addColorStop(.7,'#d3cbd4'); sg.addColorStop(1,'#dccbbd'); ctx.fillStyle=sg; ctx.fill(); }
+  // edge shading
+  ctx.strokeStyle='rgba(90,80,120,.35)'; ctx.lineWidth=6*U; ctx.stroke();
+  // little dimples in the snow (world anchored)
+  ctx.fillStyle='rgba(120,112,150,.18)';
+  var t0=Math.floor(wyOf(H)/90)*90;
+  for (var yy=t0; yy<wyOf(0)+90 && !IMG['hill-snow']; yy+=90){ for (var k=0;k<5;k++){ var h=Math.sin(yy*12.9898+k*78.233)*43758.5453; h=h-Math.floor(h); var px=cx(yy)+(h*2-1)*halfW()*0.9; ctx.beginPath(); ctx.ellipse(px, sy(yy+k*17), 6*U, 3*U, 0, 0, Math.PI*2); ctx.fill(); } }
+  // river at the bottom of the hill
+  var ry = sy(HILL+260*U);
+  if (ry > -400*U && IMG['river-from-above']) {
+    /* Tina's painting of the Blackstone River from above, with the mill on the far bank (2026-11-18).
+       Its nearest bend sits just past the end of the run; every other run it is flipped left to right. */
+    if (!IMG.riverSoft) { var src=IMG['river-from-above'], oc=document.createElement('canvas'); oc.width=src.width; oc.height=src.height; var o2=oc.getContext('2d'); o2.drawImage(src,0,0);
+      o2.globalCompositeOperation='destination-in'; var fg=o2.createLinearGradient(0,0,0,oc.height); fg.addColorStop(0,'#000'); fg.addColorStop(0.72,'#000'); fg.addColorStop(1,'rgba(0,0,0,0)'); o2.fillStyle=fg; o2.fillRect(0,0,oc.width,oc.height); IMG.riverSoft=oc; }   // its near edge fades into the hill
+    var rim=IMG.riverSoft, iw=Math.max(W*1.15, 1000*U), ih=iw*rim.height/rim.width, flip=runNo%2===0;
+    var dipX=flip?0.55:0.45, top=ry+60*U-0.86*ih, left=cx(HILL)-dipX*iw;
+    ctx.save(); if(flip){ ctx.translate(2*cx(HILL),0); ctx.scale(-1,1); } ctx.drawImage(rim, flip?cx(HILL)-(1-dipX)*iw:left, top, iw, ih); ctx.restore();
+    // the otter pops up in the water to watch Clara arrive (Tina's painting)
+    if (IMG['otter'] && G.y > HILL-2200) {
+      var ot=IMG['otter'], oh=86*U, ow=oh*ot.width/ot.height, ox=cx(HILL)+(flip?1:-1)*(0.45-0.36)*iw, oy=top+0.70*ih+Math.sin(G.t*2.2)*3*U;
+      if (!G.otterSeen && oy>40*U) { G.otterSeen=true; caption('[An otter pops up in the river to watch]', 2600); }
+      ctx.drawImage(ot, ox-ow/2, oy-oh, ow, oh);
+      ctx.strokeStyle='rgba(235,240,250,.75)'; ctx.lineWidth=2.5*U; for (var rp=0; rp<2; rp++){ var gr=(G.t*0.8+rp*0.5)%1; ctx.globalAlpha=1-gr; ctx.beginPath(); ctx.ellipse(ox, oy-4*U, ow*(0.45+gr*0.5), 8*U*(1+gr), 0, 0, Math.PI*2); ctx.stroke(); } ctx.globalAlpha=1;
+    }
+  }
+  else if (ry > 0) {
+    var bank=ctx.createLinearGradient(0,ry,0,ry+140*U); bank.addColorStop(0,'#b9b1c9'); bank.addColorStop(1,'rgba(201,198,218,0)'); ctx.fillStyle=bank; ctx.fillRect(0, ry, W, 140*U);
+    var rg=ctx.createLinearGradient(0,0,0,ry); rg.addColorStop(0,'#2a2f4f'); rg.addColorStop(0.7,'#3b4470'); rg.addColorStop(1,'#56608c'); ctx.fillStyle=rg; ctx.fillRect(0,0,W,ry);
+    ctx.fillStyle='rgba(231,154,174,.18)'; for (var wv=0; wv<6; wv++){ ctx.beginPath(); ctx.ellipse(W*(0.15+wv*0.15)+Math.sin(G.t+wv)*10*U, ry-40*U-wv*22*U, 120*U, 6*U, 0, 0, Math.PI*2); ctx.fill(); }
+    ctx.fillStyle='rgba(247,207,122,.55)';
+    for (var li=0; li<9; li++){ var lx=(li+0.5)*W/9; for (var s=0;s<5;s++){ ctx.fillRect(lx-10*U+Math.sin(G.t*1.5+li+s)*6*U, ry-18*U-s*18*U, 20*U-s*3*U, 4*U); } }
+  }
+  // sled tracks
+  ctx.strokeStyle='rgba(110,100,140,.45)'; ctx.lineWidth=3*U;
+  [-11,11].forEach(function(o){ ctx.beginPath(); G.trail.forEach(function(p,i){ var X=cx(p.y)+p.x+o*U, Y=sy(p.y); if(i===0) ctx.moveTo(X,Y); else ctx.lineTo(X,Y); }); ctx.stroke(); });
+  // decorations
+  G.deco.forEach(function(d){ var Y=sy(d.y); if (Y<-80||Y>H+80||d.y>HILL+120*U) return; drawDeco(d.kind, decoX(d), Y, d.s*U); });
+  // snowballs
+  G.balls.forEach(function(b){ if(b.hit) return; var Y=sy(b.y); if(Y<-60||Y>H+60) return; drawBall(cx(b.y)+b.off*halfW()*0.9, Y, b.r*U); });
+  // particles
+  ctx.fillStyle='#f1eef6'; G.parts.forEach(function(q){ ctx.globalAlpha=Math.max(0,Math.min(1,q.t*1.6)); ctx.beginPath(); ctx.arc(q.x, sy(q.y), q.r, 0, Math.PI*2); ctx.fill(); }); ctx.globalAlpha=1;
+  // Bernie and Clara
+  var sx=cx(G.y)+G.x, syy=sy(G.y);
+  drawBernie(sx+G.bx, syy+G.by, U, G.t, G.side>0);
+  drawClara(sx, syy, U, G.vx);
+  // falling snow
+  if (S.calm!=='on') { ctx.fillStyle='rgba(245,242,250,.8)'; flakes.forEach(function(f){ f.y+=f.v*0.016; f.x+=Math.sin(G.t+f.p)*0.3; if(f.y>H){f.y=-4;f.x=Math.random()*W;} ctx.beginPath(); ctx.arc(f.x,f.y,f.r,0,Math.PI*2); ctx.fill(); }); }
+  // warm twilight wash
+  var wash=ctx.createLinearGradient(0,0,0,H); wash.addColorStop(0,'rgba(169,150,208,.18)'); wash.addColorStop(1,'rgba(242,166,90,.12)'); ctx.fillStyle=wash; ctx.fillRect(0,0,W,H);
+}
+function drawBall(x,y,r){
+  var bi = r<18*U ? IMG['snowball-s'] : r<25*U ? IMG['snowball-m'] : IMG.snowball;
+  if (bi) { ctx.fillStyle='rgba(80,70,110,.25)'; ctx.beginPath(); ctx.ellipse(x+r*0.25,y+r*0.45,r,r*0.6,0,0,Math.PI*2); ctx.fill(); ctx.drawImage(bi, x-r*1.1, y-r*1.1, r*2.2, r*2.2); return; }
+  ctx.fillStyle='rgba(80,70,110,.25)'; ctx.beginPath(); ctx.ellipse(x+r*0.25,y+r*0.35,r,r*0.7,0,0,Math.PI*2); ctx.fill();
+  var g=ctx.createRadialGradient(x-r*0.35,y-r*0.4,r*0.1,x,y,r); g.addColorStop(0,'#f4f1f8'); g.addColorStop(.7,'#d9d4e6'); g.addColorStop(1,'#b3abc9');
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='rgba(78,61,115,.55)'; ctx.lineWidth=2.5; ctx.stroke();
+  ctx.strokeStyle='rgba(248,194,131,.7)'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(x,y,r-1,0.3,1.4); ctx.stroke();
+}
+function drawDeco(kind,x,y,s){
+  var map={pine:'pine',bare:'bare-tree',holly:'holly-bush',lamp:'lamp-post'};
+  if (IMG[map[kind]]) { var im=IMG[map[kind]], hh=(kind==='lamp'?95:kind==='holly'?78:kind==='bare'?115:120)*s, ww=hh*im.width/im.height; ctx.drawImage(im,x-ww/2,y-hh*0.8,ww,hh); return; }
+  ctx.save(); ctx.translate(x,y);
+  if (kind==='pine'){
+    ctx.fillStyle='rgba(60,50,90,.3)'; ctx.beginPath(); ctx.arc(8*s,10*s,40*s,0,Math.PI*2); ctx.fill();
+    [['#24452f',40],['#2f5a3c',30],['#3f7a4f',19]].forEach(function(l){ ctx.fillStyle=l[0]; ctx.beginPath(); for(var i=0;i<16;i++){ var a=i/16*Math.PI*2, rr=(i%2?l[1]*0.72:l[1])*s; ctx.lineTo(Math.cos(a)*rr,Math.sin(a)*rr); } ctx.closePath(); ctx.fill(); });
+    ctx.fillStyle='#eceaf3'; for(var k=0;k<9;k++){ var a2=k*0.7, rr2=(10+k*3)*s; ctx.beginPath(); ctx.arc(Math.cos(a2)*rr2,Math.sin(a2)*rr2,4*s,0,Math.PI*2); ctx.fill(); }
+  } else if (kind==='bare'){
+    ctx.strokeStyle='#5a3b26'; ctx.lineCap='round';
+    for (var b=0;b<7;b++){ var a3=b/7*Math.PI*2+0.3; ctx.lineWidth=5*s; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(Math.cos(a3)*36*s,Math.sin(a3)*36*s); ctx.stroke(); ctx.lineWidth=2.5*s; ctx.beginPath(); ctx.moveTo(Math.cos(a3)*20*s,Math.sin(a3)*20*s); ctx.lineTo(Math.cos(a3+0.5)*34*s,Math.sin(a3+0.5)*34*s); ctx.stroke(); }
+    ctx.fillStyle='#eceaf3'; for (var b2=0;b2<7;b2++){ var a4=b2/7*Math.PI*2+0.3; ctx.beginPath(); ctx.ellipse(Math.cos(a4)*26*s,Math.sin(a4)*26*s,6*s,3*s,a4,0,Math.PI*2); ctx.fill(); }
+    ctx.fillStyle='#4a3020'; ctx.beginPath(); ctx.arc(0,0,7*s,0,Math.PI*2); ctx.fill();
+  } else if (kind==='holly'){
+    ctx.fillStyle='rgba(60,50,90,.3)'; ctx.beginPath(); ctx.arc(5*s,7*s,26*s,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#2f5a3c'; for (var h=0;h<7;h++){ var a5=h/7*Math.PI*2; ctx.beginPath(); ctx.ellipse(Math.cos(a5)*12*s,Math.sin(a5)*12*s,13*s,8*s,a5,0,Math.PI*2); ctx.fill(); }
+    ctx.fillStyle='#eceaf3'; ctx.beginPath(); ctx.ellipse(-4*s,-6*s,12*s,6*s,-0.4,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#c2262e'; [[6,4],[10,-2],[-8,8],[2,12],[-12,-1]].forEach(function(p){ ctx.beginPath(); ctx.arc(p[0]*s,p[1]*s,3.2*s,0,Math.PI*2); ctx.fill(); });
+  } else {
+    var lg=ctx.createRadialGradient(0,0,2,0,0,56*s); lg.addColorStop(0,'rgba(247,207,122,.75)'); lg.addColorStop(1,'rgba(247,207,122,0)'); ctx.fillStyle=lg; ctx.beginPath(); ctx.arc(0,0,56*s,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#262626'; ctx.beginPath(); ctx.arc(0,0,9*s,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#f7cf7a'; ctx.beginPath(); ctx.arc(0,0,5*s,0,Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+}
+function drawClara(x,y,s,vx){
+  var lean=Math.max(-0.35,Math.min(0.35,vx/(900*s)));
+  ctx.save(); ctx.translate(x,y);
+  if (IMG['clara-sled']) {
+    // Tina's painting: Clara seen from behind; turned a little so the sled points up the hill
+    var im=IMG['clara-sled'], w=215*s, h=w*im.height/im.width;
+    ctx.rotate(0.38+lean); ctx.drawImage(im,-w*0.42,-h*0.55,w,h); ctx.restore(); return;
+  }
+  ctx.rotate(Math.PI+lean);
+  ctx.fillStyle='rgba(60,50,90,.3)'; ctx.beginPath(); ctx.ellipse(6*s,8*s,24*s,40*s,0,0,Math.PI*2); ctx.fill();
+  // sled: wooden slats, red runners curling at the front (bottom)
+  ctx.fillStyle='#b5131b'; roundRect(-22*s,-34*s,5*s,70*s,3*s); roundRect(17*s,-34*s,5*s,70*s,3*s);
+  ctx.strokeStyle='#b5131b'; ctx.lineWidth=5*s; ctx.beginPath(); ctx.arc(0,34*s,19*s,0.1,Math.PI-0.1); ctx.stroke();
+  ctx.fillStyle='#a8743f'; roundRect(-18*s,-32*s,36*s,64*s,6*s);
+  ctx.strokeStyle='#7d5128'; ctx.lineWidth=1.5*s; for(var i=-1;i<=1;i++){ ctx.beginPath(); ctx.moveTo(i*11*s,-30*s); ctx.lineTo(i*11*s,30*s); ctx.stroke(); }
+  // scarf trailing uphill (top)
+  ctx.fillStyle='#b8383a'; ctx.beginPath(); ctx.moveTo(-6*s,-10*s); ctx.quadraticCurveTo(-14*s+Math.sin(G.t*7)*4*s,-40*s,-4*s,-58*s); ctx.lineTo(4*s,-56*s); ctx.quadraticCurveTo(-4*s+Math.sin(G.t*7)*4*s,-38*s,4*s,-10*s); ctx.fill();
+  ctx.strokeStyle='#e9c7a0'; ctx.lineWidth=1.5*s; ctx.beginPath(); ctx.moveTo(-8*s,-30*s); ctx.lineTo(2*s,-30*s); ctx.moveTo(-6*s,-44*s); ctx.lineTo(3*s,-44*s); ctx.stroke();
+  // body: blue cable-knit sweater
+  ctx.fillStyle='#4f74a8'; ctx.beginPath(); ctx.ellipse(0,2*s,15*s,19*s,0,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#3d5f8f'; ctx.lineWidth=2*s; [-6,0,6].forEach(function(o){ ctx.beginPath(); ctx.moveTo(o*s,-12*s); ctx.lineTo(o*s,16*s); ctx.stroke(); });
+  // arms forward to the rope
+  ctx.fillStyle='#4f74a8'; ctx.beginPath(); ctx.ellipse(-12*s,14*s,5*s,11*s,0.3,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.ellipse(12*s,14*s,5*s,11*s,-0.3,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#8aa6cf'; ctx.beginPath(); ctx.arc(-9*s,24*s,4.5*s,0,Math.PI*2); ctx.arc(9*s,24*s,4.5*s,0,Math.PI*2); ctx.fill();
+  // head from above: chestnut hair, braids flying back
+  ctx.fillStyle='#6b3a1d'; ctx.beginPath(); ctx.arc(0,-14*s,11*s,0,Math.PI*2); ctx.fill();
+  [-1,1].forEach(function(sd){ ctx.fillStyle='#6b3a1d'; for(var b=0;b<4;b++){ ctx.beginPath(); ctx.ellipse(sd*(8+b*1.5)*s+Math.sin(G.t*6+b)*1.5*s,(-24-b*7)*s,3.6*s,4.6*s,0,0,Math.PI*2); ctx.fill(); }
+    ctx.fillStyle='#e9eef8'; ctx.beginPath(); ctx.arc(sd*9*s,-22*s,3*s,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#4f74a8'; ctx.beginPath(); ctx.arc(sd*11*s,-21*s,2.4*s,0,Math.PI*2); ctx.fill(); });
+  ctx.strokeStyle='#8a4f2a'; ctx.lineWidth=1.2*s; ctx.beginPath(); ctx.moveTo(0,-24*s); ctx.lineTo(0,-5*s); ctx.stroke();
+  ctx.restore();
+}
+function drawBernie(x,y,s,t,flip){
+  ctx.save(); ctx.translate(x,y); if (flip) ctx.scale(-1,1);   // the picture faces left; on the right side he is mirrored to face right
+  if (IMG['bernie-run']) { var bim=IMG['bernie-run'], bw=120*s, bh=bw*bim.height/bim.width; ctx.translate(0, Math.sin(t*9)*3*s); ctx.drawImage(bim,-bw/2,-bh/2,bw,bh); ctx.restore(); return; }
+  ctx.rotate(Math.PI);  // he runs up the hill beside her
+  var leg=Math.sin(t*14)*5*s;
+  ctx.fillStyle='rgba(60,50,90,.3)'; ctx.beginPath(); ctx.ellipse(6*s,8*s,20*s,32*s,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#e7e5ea';
+  [[-12,-14,leg],[12,-14,-leg],[-12,16,-leg],[12,16,leg]].forEach(function(p){ ctx.beginPath(); ctx.ellipse(p[0]*s,p[1]*s+p[2],5*s,8*s,0,0,Math.PI*2); ctx.fill(); });
+  ctx.fillStyle='#f2f1f4'; ctx.beginPath(); ctx.ellipse(0,0,17*s,26*s,0,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#cfcbd8'; ctx.lineWidth=1.5*s; for(var i=0;i<5;i++){ ctx.beginPath(); ctx.arc(0,-6*s+i*6*s,10*s,0.3,2.8); ctx.stroke(); }
+  ctx.fillStyle='#f2f1f4'; ctx.beginPath(); ctx.ellipse(Math.sin(t*5)*6*s,-30*s,7*s,12*s,Math.sin(t*5)*0.4,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(0,28*s,12*s,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#d9d6e0'; ctx.beginPath(); ctx.ellipse(-11*s,26*s,5*s,8*s,0.4,0,Math.PI*2); ctx.ellipse(11*s,26*s,5*s,8*s,-0.4,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#2b2626'; ctx.beginPath(); ctx.arc(0,39*s,3.4*s,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#d9a23a'; ctx.beginPath(); ctx.arc(0,17*s,3*s,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); ctx.fill(); }
+
+/* ---------- loop and screens ---------- */
+function frame(ts){
+  if (!running) return;
+  var dt=Math.max(0,Math.min(0.05,(ts-last)/1000||0)); last=ts;
+  if (!paused) update(dt);
+  draw();
+  requestAnimationFrame(frame);
+}
+function start(){
+  $('startOver').hidden=true; $('endOver').hidden=true; delete $('endOver').dataset.shown; $('endVid').pause();
+  newRun(); paused=false; $('pauseBtn').setAttribute('aria-pressed','false'); $('pauseBtn').textContent='Pause';
+  flakes=[]; for(var i=0;i<90;i++) flakes.push({x:Math.random()*W,y:Math.random()*H,v:rnd(30,80),r:rnd(1,2.6),p:rnd(0,6)});
+  A.narr.pause();
+  runNo=(runNo||0)+1; var song=runNo%2 ? 'audio/music-before-the-snow-melts.mp3' : 'audio/music-sledding-on-the-river.mp3';
+  if (A.music.getAttribute('src')!==song){ A.music.pause(); A.music.src=song; A.music.load(); }
+  if (S.music==='on') safePlay(A.music);
+  safePlay(A.glide); safePlay(A.river);
+  caption('[Sled runners hiss over the snow]', 2600);
+  setTimeout(function(){ if(running) claraSay('start'); },900);
+  running=true; last=performance.now(); requestAnimationFrame(frame);
+  cv.focus && cv.focus();
+}
+function finish(){
+  $('endOver').dataset.shown='1';
+  running=false; A.glide.volume=0;
+  play('chime',0.8);
+  setTimeout(function(){ if (S.sfx==='on') safePlay(A.best); }, 900);
+  $('endCount').textContent = G.count + (G.count===1?' snowball':' snowballs') + ' burst';
+  $('endNote').textContent = G.count>25 ? 'Bernie thinks that was the best run ever.' : G.count>10 ? 'Bernie is very proud of you.' : 'A slow, cozy ride. Bernie loved it.';
+  // a gently moving finish picture, unless Calm motion is on
+  var v=$('endVid');
+  if (S.calm!=='on') { v.hidden=false; $('endArt').hidden=true; var pv=v.play(); if(pv&&pv.catch) pv.catch(function(){ v.hidden=true; $('endArt').hidden=false; }); }
+  else { v.hidden=true; $('endArt').hidden=false; }
+  $('endOver').hidden=false; $('againBtn').focus();
+}
+function togglePause(){
+  if (!running) return;
+  paused=!paused; $('pauseBtn').setAttribute('aria-pressed', paused?'true':'false'); $('pauseBtn').textContent = paused ? 'Paused' : 'Pause';
+  if (paused) { A.glide.volume=0; A.music.pause(); caption('Paused. Press Pause again to keep sliding.', 3000); } else if (S.music==='on') safePlay(A.music);
+}
+$('startBtn').addEventListener('click', start);
+$('againBtn').addEventListener('click', start);
+$('townBtn').addEventListener('click', function(){ $('endOver').hidden=true; $('startOver').hidden=false; A.river.volume=0; $('startBtn').focus(); });
+$('narrBtn').addEventListener('click', function(){ A.narr.currentTime=0; safePlay(A.narr); caption('Narrator: River Hill wasn’t the official name. That’s just what the kids called it. In winter, it was the best sledding hill in town.', 9000); });
+$('pauseBtn').addEventListener('click', togglePause);
+$('setBtn').addEventListener('click', function(){ if (running && !paused) togglePause(); $('setOver').hidden=false; $('setDone').focus(); });
+$('setDone').addEventListener('click', function(){ $('setOver').hidden=true; });
+
+/* testing helper: jump near the river */
+window.rhNearRiver = function(){ if (G) G.y = HILL - 600; };
+window.rhStep = function(n, steerToBalls){ for (var i=0;i<n && running;i++){ if (steerToBalls){ var nb=G.balls.find(function(b){return !b.hit && b.y>G.y;}); if(nb){ var tx=nb.off*halfW()*0.9 + cx(nb.y) - cx(G.y); keys.ArrowLeft = tx < G.x-5; keys.ArrowRight = tx > G.x+5; } } update(1/60); } draw(); keys.ArrowLeft=keys.ArrowRight=false; return { count:G.count, pct:Math.round(G.y/HILL*100), done:G.done }; };
+/* first still frame: the top of the hill */
+resize(); applySettings(); newRun(); draw();
+})();
+</script>
+<script>/* SMALL-SCREEN start (tools/small_screen.py): Hide panels, Box size, Speech boxes */
+(function(){
+  var r=document.documentElement, P='rh-';
+  function g(k){ try{ return localStorage.getItem(P+k); }catch(e){ return null; } }
+  function s(k,v){ try{ localStorage.setItem(P+k,v); }catch(e){} }
+  var small=(innerWidth<760 || innerHeight<560);
+  var st={ panels:g('panels')||(small?'folded':'open'), box:g('box')||(small?'s':'m'), words:g('wordsbox')||'on' };
+  var bar=document.querySelector('.bar'), btn=document.createElement('button'); btn.id='panelsBtn'; btn.type='button';
+  bar.insertBefore(btn, bar.firstChild);
+  btn.addEventListener('click',function(){ st.panels= st.panels==='folded'?'open':'folded'; s('panels',st.panels); apply(); btn.blur(); });
+  var rows=[['panels','Panels (top bar and buttons)',[['open','Full size'],['folded','Folded small']]],
+            ['box','Speech box size',[['s','Small'],['m','Medium'],['l','Large']]]];
+  if(true) rows.push(['words','Speech boxes',[['on','Show the words'],['off','Voice only']]]);
+  var done=document.getElementById('setDone').closest('.row');
+  rows.forEach(function(row){ var d=document.createElement('div'); d.className='set';
+    d.innerHTML='<b>'+row[1]+'</b><div class="seg" data-k2="'+row[0]+'">'+row[2].map(function(o){ return '<button type="button" data-v2="'+o[0]+'">'+o[1]+'</button>'; }).join('')+'</div>';
+    done.parentNode.insertBefore(d,done);
+    d.querySelector('.seg').addEventListener('click',function(e){ var b=e.target.closest('button'); if(!b) return; st[row[0]]=b.dataset.v2; s(row[0]==='words'?'wordsbox':row[0],b.dataset.v2); apply(); }); });
+  function apply(){
+    r.classList.toggle('compact', st.panels==='folded'); r.setAttribute('data-box',st.box); r.classList.toggle('nobox', st.words==='off');
+    btn.textContent= st.panels==='folded' ? 'Show panels' : 'Hide panels'; btn.setAttribute('aria-expanded', st.panels==='folded'?'false':'true');
+    document.querySelectorAll('.seg[data-k2]').forEach(function(seg){ seg.querySelectorAll('button').forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.v2===st[seg.dataset.k2]?'true':'false'); }); });
+    setTimeout(function(){ dispatchEvent(new Event('resize')); },30);
+  }
+  apply();
+})();
+/* SMALL-SCREEN end */</script>

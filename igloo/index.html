@@ -1,0 +1,540 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Igloo and Snowball Fight</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Playfair+Display:wght@700&display=swap">
+<style>
+/* Layout: one-screen game. Big control bar on top; the snowy Beaumont backyard at dusk below; Dad's or Uncle Joe's words in a box;
+   big buttons along the bottom. Part 1: build the igloo block by block. Part 2: snowball fight, Clara and Bernie against Dad and Uncle Joe. */
+:root {
+  --page:#2b2b2b; --panel:#363636; --well:#242424; --ink:#ece6da; --muted:#cfc6b6; --line:#8a8070;
+  --holly:#a8d8b4; --holly-tint:#2f4a3a; --lamp:#f5cf85; --lamp-tint:#4a3f2b; --joe:#b3c3f0; --dad:#f0c0a0; --scrim:#1a1816; --cap:#f6eedc; --focus:#f5cf85;
+  --read:"Atkinson Hyperlegible","Segoe UI",Verdana,sans-serif; --title:"Playfair Display",Georgia,serif;
+  --scale:1; color-scheme: dark;
+}
+:root[data-look="sand"] { --page:#d6ccb5; --panel:#e4dac4; --well:#cbbfa4; --ink:#111111; --muted:#3a332b; --line:#4a4038; --holly:#1f4a30; --holly-tint:#cfe0cc; --lamp:#6b4510; --lamp-tint:#f3ddae; --joe:#2e3558; --dad:#5a2e14; --focus:#1f4a30; color-scheme: light; }
+:root[data-look="light"] { --page:#e9e2d2; --panel:#f1ebdd; --well:#ddd4c0; --ink:#111111; --muted:#3a332b; --line:#4a4038; --holly:#1f4a30; --holly-tint:#cfe0cc; --lamp:#6b4510; --lamp-tint:#f3ddae; --joe:#2e3558; --dad:#5a2e14; --focus:#1f4a30; color-scheme: light; }
+:root[data-look="contrast"] { --page:#c9c9c9; --panel:#d9d9d9; --well:#bdbdbd; --ink:#000; --muted:#1a1a1a; --line:#000; --holly:#0e3320; --holly-tint:#b8d4bc; --lamp:#4a2e00; --lamp-tint:#e9cf92; --joe:#141b3d; --dad:#3a1a08; --focus:#000; color-scheme: light; }
+html, body { height:100%; }
+html { font-size: calc(20px * var(--scale)); }
+body { margin:0; background:var(--page); color:var(--ink); font:400 1rem/1.5 var(--read); overflow:hidden; }
+body::before { content:""; position:fixed; inset:0 0 auto; height:env(safe-area-inset-top,0px); z-index:10; background:var(--panel); }
+.app { height:100%; display:grid; grid-template-rows:auto 1fr auto; }
+.bar { background:var(--panel); border-bottom:3px solid var(--line); padding-block:8px; padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center; }
+.home { font-weight:700; font-size:1.05rem; color:var(--ink); background:var(--well); border:3px solid var(--line); border-radius:12px; padding:6px 12px; text-decoration:none; }
+.home:focus-visible { outline:4px solid var(--focus); outline-offset:2px; }
+.bar h1 { margin:0 auto 0 0; font:700 1.3rem/1.1 var(--title); color:var(--holly); }
+.score { font-weight:700; font-size:1.1rem; font-variant-numeric:tabular-nums; }
+.foot { background:var(--panel); border-top:3px solid var(--line); padding-block:8px calc(8px + env(safe-area-inset-bottom,0px)); padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); display:flex; flex-wrap:wrap; gap:10px; justify-content:center; align-items:center; }
+.foot .main { min-width:190px; min-height:64px; font-size:1.05rem; }
+.foot .hint { color:var(--muted); font-weight:700; }
+button { font:700 0.9rem/1.2 var(--read); color:var(--ink); background:var(--well); border:3px solid var(--line); border-radius:12px; min-height:52px; min-width:52px; padding:0 16px; cursor:pointer; touch-action:none; }
+button.primary { background:var(--holly-tint); border-color:var(--holly); }
+button[aria-pressed="true"] { background:var(--holly-tint); border-color:var(--holly); }
+button[aria-pressed="true"]::before { content:"\2713  "; }
+button:focus-visible { outline:3px solid var(--focus); outline-offset:3px; }
+button[hidden] { display:none; }
+.stage { position:relative; min-height:0; }
+canvas { display:block; width:100%; height:100%; touch-action:none; }
+.talk { position:absolute; top:14px; left:max(14px,env(safe-area-inset-left,0px)); max-width:min(560px,calc(100% - 28px)); background:var(--panel); border:3px solid var(--line); border-radius:16px; padding:12px 18px; }
+.talk { display:flex; gap:14px; align-items:center; }
+.talk[hidden] { display:none; }
+.talk img { width:84px; height:84px; border-radius:12px; border:3px solid var(--line); object-fit:cover; flex:none; }
+.talk img[hidden] { display:none; }
+.talk b { display:block; font-size:1rem; }
+.talk p { margin:0; font-size:1.15rem; line-height:1.45; }
+.cap { position:absolute; left:50%; bottom:16px; transform:translateX(-50%); max-width:min(900px,calc(100% - 32px)); background:var(--scrim); color:var(--cap); font:700 1.1rem/1.45 var(--read); padding:12px 24px; border-radius:12px; text-align:center; }
+.over { position:absolute; inset:0; display:grid; place-items:safe center; padding:24px max(16px,env(safe-area-inset-left,0px)); background:rgba(20,18,16,.55); overflow:auto; }
+.over[hidden] { display:none; }
+.sheet { width:min(820px,100%); background:var(--panel); border:3px solid var(--line); border-radius:18px; overflow:hidden; display:grid; }
+.sheet img.art { width:100%; aspect-ratio:16/8; object-fit:cover; display:block; border-bottom:3px solid var(--line); }
+.sheet img.art[hidden] { display:none; }
+.sheet .in { padding:24px; display:grid; gap:14px; }
+.sheet h2 { margin:0; font:700 2rem/1.1 var(--title); color:var(--holly); text-wrap:balance; }
+.sheet p { margin:0; max-width:62ch; }
+.sheet ul { margin:0; padding-left:1.2em; display:grid; gap:6px; }
+.row { display:flex; flex-wrap:wrap; gap:12px; }
+.set { display:grid; gap:8px; padding:12px; background:var(--well); border-radius:12px; }
+.seg { display:flex; flex-wrap:wrap; gap:8px; }
+.big { font-size:1.6rem; font-weight:700; color:var(--lamp); }
+.note { color:var(--muted); }
+/* SMALL-SCREEN start (tools/small_screen.py) */
+#panelsBtn { white-space:nowrap; }
+:root.compact .bar { padding-block:4px; gap:6px 10px; }
+:root.compact .bar > :not(#panelsBtn):not(#pauseBtn):not(.score) { display:none !important; }
+:root.compact .bar button { min-height:44px; padding:0 12px; font-size:0.8rem; }
+:root.compact .bar .score { font-size:0.85rem; margin-right:auto; }
+:root.compact .foot { padding-block:4px calc(4px + env(safe-area-inset-bottom,0px)); gap:6px; }
+:root.compact .foot button { min-height:44px; min-width:44px; padding:0 10px; font-size:0.8rem; }
+:root.compact .foot .shoot { min-width:120px; min-height:48px; }
+:root.compact .foot .hint { display:none; }
+:root.compact .dad,:root.compact .talk,:root.compact .joe,:root.compact .clara,:root.compact .say { top:auto !important; bottom:8px; left:8px; right:8px; max-width:none; padding:6px 12px; border-radius:12px; gap:8px; }
+:root.compact .dad img,:root.compact .talk img,:root.compact .joe img,:root.compact .clara img,:root.compact .say img { display:none; }
+:root.compact .dad small,:root.compact .talk small,:root.compact .joe small,:root.compact .clara small,:root.compact .say small { display:none; }
+:root.compact .cap { bottom:auto; top:8px; }
+:root[data-box="s"] .dad p,:root[data-box="s"] .talk p,:root[data-box="s"] .joe p,:root[data-box="s"] .clara p,:root[data-box="s"] .say p, :root[data-box="s"] .cap { font-size:0.85rem; line-height:1.35; }
+:root[data-box="s"] .dad b,:root[data-box="s"] .talk b,:root[data-box="s"] .joe b,:root[data-box="s"] .clara b,:root[data-box="s"] .say b { font-size:0.8rem; }
+:root[data-box="l"] .dad p,:root[data-box="l"] .talk p,:root[data-box="l"] .joe p,:root[data-box="l"] .clara p,:root[data-box="l"] .say p, :root[data-box="l"] .cap { font-size:1.3rem; }
+:root.nobox .dad,:root.nobox .talk,:root.nobox .joe,:root.nobox .clara,:root.nobox .say { display:none !important; }
+/* SMALL-SCREEN end */
+</style>
+
+<div class="app">
+  <header class="bar">
+    <a class="home" id="homeLink" href="../" hidden>&larr; All games</a>
+    <h1>Igloo and Snowball Fight</h1>
+    <span class="score" id="scoreText" aria-live="polite">Igloo: 0 of 23 blocks</span>
+    <button id="pauseBtn" aria-pressed="false">Pause</button>
+    <button id="setBtn">Settings</button>
+  </header>
+  <div class="stage" id="stage">
+    <canvas id="cv" tabindex="0" aria-label="The snowy Beaumont backyard at dusk. Clara, Bernie, Dad and Uncle Joe build an igloo and have a snowball fight"></canvas>
+    <div class="talk" id="talkBox" hidden><img id="talkPic" src="art/dad-winter.jpg" alt=""><div><b id="talkWho">Dad</b><p id="talkLine"></p></div></div>
+    <p class="cap" id="cap" hidden></p>
+
+    <div class="over" id="startOver">
+      <div class="sheet">
+        <img class="art" id="startArt" src="art/backyard.jpg" alt="Tina's painting of the snowy backyard at dusk with the porch light on" hidden>
+        <div class="in">
+          <h2>Igloo and Snowball Fight</h2>
+          <p>Saturday afternoon, fresh snow in the backyard. Uncle Joe cuts the snow blocks, Dad shows Clara how to set them, and Bernie supervises. When the igloo is done, the grown-ups build a fort.</p>
+          <div class="set"><b>Difficulty</b><div class="seg" data-key="diff"><button data-v="easy">Easy</button><button data-v="medium">Medium</button><button data-v="hard">Hard</button></div></div>
+          <div class="row"><button class="primary" id="buildBtn">Build the igloo first</button><button id="fightBtn">Go straight to the snowball fight</button></div>
+          <h3 style="margin:0">How to play</h3>
+          <ul>
+            <li><b>Build the igloo:</b> a snow block slides along the top. Press the <b>space bar</b> (or <b>Drop the block</b>, or click) when it is over the glowing spot.</li>
+            <li><b>Snowball fight:</b> <b>left and right arrows</b> aim lower or higher. <b>Hold the space bar</b> (or <b>Hold to throw</b>) for power, then let go. Or point and hold the mouse.</li>
+            <li><b>Duck</b> into the igloo with the <b>down arrow</b> or the <b>Duck</b> button when Dad or Uncle Joe winds up. Press it again to come back out.</li>
+            <li>First to <b>7 hits</b> wins. Bernie sometimes catches a snowball.</li>
+          </ul>
+          <p class="note">Dad's and Uncle Joe's lines are written for the game, not from the show. Their voices are AI-generated.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="over" id="endOver" hidden>
+      <div class="sheet"><img class="art" id="endPic" alt="" hidden><div class="in">
+        <h2 id="endTitle">Good game!</h2>
+        <p class="big" id="endScore"></p>
+        <p id="endNote"></p>
+        <div class="row"><button class="primary" id="againBtn">Another snowball fight</button><button id="rebuildBtn">Build a new igloo</button></div>
+      </div></div>
+    </div>
+
+    <div class="over" id="setOver" hidden>
+      <div class="sheet"><div class="in">
+        <h2>Settings</h2>
+        <div class="set"><b>Look</b><div class="seg" data-key="look"><button data-v="dusk">Dark soft</button><button data-v="sand">Dim sand</button><button data-v="light">Light</button><button data-v="contrast">Extra contrast</button></div></div>
+        <div class="set"><b>Text size</b><div class="seg" data-key="size"><button data-v="1">Large</button><button data-v="1.2">Larger</button><button data-v="1.4">Largest</button></div></div>
+        <div class="set"><b>Difficulty</b><div class="seg" data-key="diff"><button data-v="easy">Easy</button><button data-v="medium">Medium</button><button data-v="hard">Hard</button></div></div>
+        <div class="set"><b>Throw helper (shows where the snowball will go)</b><div class="seg" data-key="guide"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="set"><b>Music</b><div class="seg" data-key="music"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="set"><b>Sounds</b><div class="seg" data-key="sfx"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="set"><b>Dad's and Uncle Joe's voices</b><div class="seg" data-key="voice"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="set"><b>Sound captions</b><div class="seg" data-key="caps"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+        <div class="set"><b>Calm motion (no falling snow)</b><div class="seg" data-key="calm"><button data-v="off">Off</button><button data-v="on">On</button></div></div>
+        <div class="row"><button class="primary" id="setDone">Done</button></div>
+      </div></div>
+    </div>
+  </div>
+  <footer class="foot">
+    <button id="aimL" hidden>Aim lower</button>
+    <button class="main primary" id="mainBtn">Drop the block</button>
+    <button id="aimR" hidden>Aim higher</button>
+    <button id="duckBtn" aria-pressed="false" hidden>Duck</button>
+    <span class="hint" id="hint" aria-live="polite">Build the igloo</span>
+  </footer>
+</div>
+
+<script>
+(function(){
+'use strict';
+document.getElementById('homeLink').hidden=false;
+var $=function(id){return document.getElementById(id);}, root=document.documentElement;
+function lget(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+function lset(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+var S={ look:lget('ig-look')||'dusk', size:lget('ig-size')||'1', diff:lget('ig-diff')||'easy', guide:lget('ig-guide')||'on', music:lget('ig-music')||'on', sfx:lget('ig-sfx')||'on', voice:lget('ig-voice')||'on', caps:lget('ig-caps')||'on', calm:lget('ig-calm')||(reduce?'on':'off') };
+(function(){ var i=new Image(); i.onload=function(){ $('startArt').hidden=false; }; i.src=$('startArt').src; })();
+
+/* ---------- sound: Tina's music, episode sounds, and soft noises made in code ---------- */
+function snd(src,loop,vol){ var a=new Audio(src); a.loop=!!loop; a.volume=vol; a.preload='auto'; return a; }
+var music=snd('audio/music-igloo-build.mp3',true,0.2);   /* Tina's songs: building, snowball fight, and the fight on Hard (2026-11-18) */
+var SFX={ woof:'audio/sfx/bernie-woof.mp3', thump:'audio/sfx/bernie-tail-thump.mp3', door:'audio/sfx/screen-door.mp3', steps:'audio/sfx/snow-steps.mp3', whuff:'audio/sfx/whuff.mp3', bark:'audio/sfx/bernie-bark.mp3', pant:'audio/sfx/bernie-pant.mp3', tags:'audio/sfx/bernie-tags.mp3', sigh:'audio/sfx/bernie-sigh.mp3', lick:'audio/sfx/bernie-lick.mp3' };
+/* Bernie makes a sound now and then (Tina, 2026-11-18: more Bernie) */
+var bernieT=6; function bernieNoise(){ var n=['pant','tags','woof','sigh','bark'][Math.floor(Math.random()*5)], c={pant:'[Bernie pants happily in the cold]',tags:'[Bernie shakes the snow off. His tags jingle]',woof:'[Bernie woofs]',sigh:'[Bernie gives a big contented sigh]',bark:'[Bernie barks at a falling snowflake]'}[n]; play(n,0.55); caption(c,2000); }
+function play(n,v){ if(S.sfx!=='on') return; var a=new Audio(SFX[n]); a.volume=v==null?0.8:v; var p=a.play(); if(p&&p.catch) p.catch(function(){}); }
+function safePlay(a){ var p=a.play(); if(p&&p.catch) p.catch(function(){}); }
+function setTrack(src){ if(music.getAttribute('src')===src) return; var was=!music.paused; music.src=src; music.load(); if(was) safePlay(music); }
+var AC=null;
+function noise(dur,vol,lo,hi){ if(S.sfx!=='on') return; try{ AC=AC||new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return; }
+  var n=Math.floor(AC.sampleRate*dur), b=AC.createBuffer(1,n,AC.sampleRate), d=b.getChannelData(0); for(var i=0;i<n;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/n,2);
+  var s=AC.createBufferSource(); s.buffer=b; var f=AC.createBiquadFilter(); f.type='bandpass'; f.frequency.setValueAtTime(lo,AC.currentTime); f.frequency.linearRampToValueAtTime(hi,AC.currentTime+dur); f.Q.value=0.8;
+  var g=AC.createGain(); g.gain.value=vol; s.connect(f); f.connect(g); g.connect(AC.destination); s.start(); }
+function whoosh(){ noise(0.35,0.35,500,1600); }
+function splat(){ noise(0.25,0.6,900,300); }
+function crunch(){ noise(0.18,0.5,1200,500); }
+function chime(){ if(S.sfx!=='on') return; try{ AC=AC||new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return; } var t=AC.currentTime; [523,659,784].forEach(function(f,i){ var o=AC.createOscillator(), g=AC.createGain(); o.type='triangle'; o.frequency.value=f; g.gain.setValueAtTime(0.0001,t+i*0.12); g.gain.linearRampToValueAtTime(0.12,t+i*0.12+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t+i*0.12+0.5); o.connect(g); g.connect(AC.destination); o.start(t+i*0.12); o.stop(t+i*0.12+0.55); }); }
+var capT=null; function caption(t,ms){ if(S.caps!=='on') return; var c=$('cap'); c.textContent=t; c.hidden=false; clearTimeout(capT); capT=setTimeout(function(){c.hidden=true;},ms||2400); }
+
+/* ---------- Dad and Uncle Joe talk (ElevenLabs: Dad "Sanchez", Uncle Joe ewxUvnyvvOehYjKjUVKC; files audio/voice/<id>.mp3) ----------
+   A line never cuts another off. A new line waits while someone talks (only a few wait; small lines are skipped). */
+var LINES={
+  "clara-build-1": "Okay, Bernie. We're building a castle. Well, an igloo.", "clara-good-1": "Perfect fit!", "clara-good-2": "One more row!", "clara-crumble-1": "Oops. Snow pancake.", "clara-done-1": "We did it! Bernie, go on in!", "clara-fight-1": "You two are going down!", "clara-hitJoe-1": "Got you, Uncle Joe!", "clara-hitDad-1": "Bullseye, Dad!", "clara-hurt-1": "Hey! Right in the scarf!", "clara-hurt-2": "Brr! That went down my collar!", "clara-duck-1": "Ha! Missed me!", "clara-win-1": "Snow queen of the backyard!",
+  'dad-build-1':"Okay, Clara. Snow blocks first. An igloo is just a lot of little blocks that believe in each other.",
+  'dad-build-2':"Nice. Right on the line.", 'dad-build-3':"Perfect. That one's built to last.", 'dad-build-4':"Close enough. Snow forgives.",
+  'dad-build-5':"Oops. That one's a snowball now. Try again.", 'dad-build-6':"Each row leans in a little. That's the secret.",
+  'dad-build-7':"Last block on top. Gently now.", 'dad-build-8':"Look at that. A real igloo. And Bernie's already inside.",
+  'dad-fight-1':"Snowball fight! Clara and Bernie against the grown-ups.", 'dad-hit-1':"Got me! Right in the hat.",
+  'dad-hit-2':"Oof. Okay, okay, you've got a good arm.", 'dad-hit-3':"That's cold! That's very cold!", 'dad-throw-1':"Incoming!",
+  'dad-throw-2':"Here comes a soft one.", 'dad-score-1':"Ha! Got you, kiddo.", 'dad-duck-1':"Duck, Clara!", 'dad-bernie-1':"Bernie, that was our snowball!",
+  'dad-win-1':"You win. I surrender. Who wants cocoa?", 'dad-lose-1':"We win this round. Rematch after cocoa?",
+  'joe-build-1':"I'll cut the blocks. You drop them in. Teamwork.", 'joe-build-2':"Ooh, nice block.", 'joe-build-3':"Smooth. You're a natural igloo builder.",
+  'joe-build-4':"That one crumbled. Happens to the best of us.", 'joe-build-5':"One more row. The roof is the tricky part.",
+  'joe-fight-1':"My fort is ready. Prepare to be snowed under.", 'joe-hit-1':"Agh! Right down the back of my coat!", 'joe-hit-2':"Lucky shot. That was a lucky shot.",
+  'joe-hit-3':"Okay, that one I deserved.", 'joe-throw-1':"Heads up!", 'joe-throw-2':"Special delivery!", 'joe-score-1':"Gotcha! Uncle Joe strikes again.",
+  'joe-close-1':"Whoa, close one!", 'joe-bernie-1':"Bernie! Whose side are you on?", 'joe-win-1':"I give up! You and Bernie win. I'm frozen solid.",
+  'joe-lose-1':"Team grown-ups wins! Don't tell anyone it was close." };
+var talkV=null, talkT=null, TQ=[], busyTill=0;
+function readMs(t){ return 1800 + t.split(/\s+/).length*480; }
+function talking(){ return (talkV && !talkV.ended && !talkV.paused) || Date.now()<busyTill; }
+function musicLevel(){ return S.music!=='on' ? 0 : (talking() ? 0.08 : 0.2); }
+function say(id, important){ if(talking()||TQ.length){ if(important ? TQ.length<4 : TQ.length<1) TQ.push(id); return; } speak(id); }
+function speak(id){
+  var who=id.slice(0,3), t=LINES[id]; if(!t) return;
+  $('talkWho').textContent= who==='dad'?'Dad':who==='cla'?'Clara':'Uncle Joe'; $('talkWho').style.color= who==='dad'?'var(--dad)':who==='cla'?'#9fc0f0':'var(--joe)';
+  var pic=$('talkPic'); pic.hidden=false; if(who==='cla'){ pic.src='art/clara-face.jpg'; pic.alt='Clara, chestnut braids and rosy cheeks, from Tina’s Storykeeper film'; } else { pic.src= who==='dad'?'art/dad-winter.jpg':'art/joe-winter.jpg'; pic.alt= who==='dad'?'Dad in his knit hat and green scarf, smiling under his mustache':'Uncle Joe in his red pom-pom hat and cream scarf, smiling'; }
+  $('talkLine').textContent=t; $('talkBox').hidden=false; clearTimeout(talkT); if(talkV){ talkV.pause(); talkV=null; }
+  var ms=readMs(t); busyTill=Date.now()+ms;
+  if(S.voice==='on'){ var v=new Audio('audio/voice/'+id+'.mp3'); talkV=v;
+    v.addEventListener('loadedmetadata',function(){ if(v===talkV && isFinite(v.duration)){ var full=Math.max(ms,v.duration*1000+1200); busyTill=Date.now()+full; clearTimeout(talkT); talkT=setTimeout(hideTalk,full); } });
+    safePlay(v); }
+  talkT=setTimeout(hideTalk,ms); music.volume=musicLevel();
+}
+function hideTalk(){
+  if(paused){ clearTimeout(talkT); talkT=setTimeout(hideTalk,500); return; }
+  if(talkV && !talkV.ended && !talkV.paused){ clearTimeout(talkT); talkT=setTimeout(hideTalk,400); return; }
+  $('talkBox').hidden=true; busyTill=0; music.volume=musicLevel();
+  if(TQ.length){ busyTill=Date.now()+600; setTimeout(function(){ if(TQ.length){ busyTill=0; speak(TQ.shift()); } },500); }
+}
+function pick(list){ return list[Math.floor(Math.random()*list.length)]; }
+
+/* ---------- settings ---------- */
+function apply(){
+  if(S.look==='dusk') root.removeAttribute('data-look'); else root.setAttribute('data-look',S.look);
+  root.style.setProperty('--scale',S.size);
+  document.querySelectorAll('.seg[data-key]').forEach(function(seg){ seg.querySelectorAll('button').forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.v===S[seg.dataset.key]?'true':'false'); }); });
+  music.volume=musicLevel(); if(S.music!=='on') music.pause(); else if(running&&!paused) safePlay(music);
+  if(S.voice!=='on' && talkV){ talkV.pause(); talkV=null; }
+  if(S.caps!=='on') $('cap').hidden=true;
+  resize();
+}
+document.querySelectorAll('.seg[data-key]').forEach(function(seg){ seg.addEventListener('click',function(e){ var b=e.target.closest('button'); if(!b) return; S[seg.dataset.key]=b.dataset.v; lset('ig-'+seg.dataset.key,b.dataset.v); apply(); }); });
+function D(){ return {easy:{slide:90,tol:1.25,wait:[2.6,4.6],wind:1.25,err:95,catchP:0.3,flight:1.45,both:false},
+                      medium:{slide:130,tol:0.8,wait:[1.8,3.4],wind:0.95,err:65,catchP:0.18,flight:1.2,both:false},
+                      hard:{slide:180,tol:0.45,wait:[1.1,2.4],wind:0.7,err:18,catchP:0.1,flight:1.0,both:true}}[S.diff]; }
+
+/* ---------- the backyard, drawn in a 1000 x 600 space ---------- */
+var VW=1000, VH=600, GROUND=470;
+var cv=$('cv'), ctx=cv.getContext('2d'), W=800, H=600, DPR=1, SC=1, OX=0, OY=0;
+function resize(){ var r=$('stage').getBoundingClientRect(); DPR=Math.min(devicePixelRatio||1,2); W=Math.max(320,r.width); H=Math.max(300,r.height); cv.width=W*DPR; cv.height=H*DPR; SC=Math.min(W/VW,H/VH); OX=(W-VW*SC)/2; OY=(H-VH*SC)/2; draw(); }
+addEventListener('resize',resize);
+var IG={x:290, rows:[{w:380,n:7},{w:344,n:6},{w:290,n:5},{w:210,n:4},{w:96,n:1}], bh:38, rx:195};
+function slots(){ var L=[]; IG.rows.forEach(function(r,ri){ var bw=r.w/r.n; for(var i=0;i<r.n;i++) L.push({row:ri, i:i, x:IG.x-r.w/2+bw*(i+0.5), y:GROUND-IG.bh*(ri+1), w:bw}); }); return L; }
+var ROWS_ALL=IG.rows.map(function(r){ return r.n; }), ROWS_EASY=[5,4,3,2,1];
+var SLOTS=slots(), TOTAL=SLOTS.length;
+function setRows(){ var ns=S.diff==='easy'?ROWS_EASY:ROWS_ALL; IG.rows.forEach(function(r,i){ r.n=ns[i]; }); SLOTS=slots(); TOTAL=SLOTS.length; }   // a smaller igloo on Easy (Tina, 2026-11-18)
+var CL={x:585, duckX:500};  // Clara by the igloo's door, and inside the tunnel when she ducks
+var FORT={x0:712,x1:912,top:412};
+var flakes=[]; for(var i=0;i<70;i++) flakes.push({x:Math.random()*VW,y:Math.random()*VH,s:0.6+Math.random()*1.6,v:12+Math.random()*22});
+
+/* ---------- game state ---------- */
+var G=null, running=false, paused=false, last=0;
+function newBuild(){ setRows(); G={phase:'build', placed:0, blocks:[], slide:{x:IG.x-150,dir:1,falling:false,y:220,vy:0}, crumbs:[], perfect:0, bernie:{x:650,tx:650,inside:false}, done:false, t:0};
+  updScore(); setFoot(); }
+function newFight(keepIgloo){
+  if(!(G && G.blocks && G.blocks.length)) setRows();
+  var had= G && G.blocks && G.blocks.length===TOTAL;
+  G={phase:'fight', blocks: had||keepIgloo===false ? (G?G.blocks:[]) : [], me:0, them:0, duck:false, aim:0.6, power:0, holding:false, balls:[], crumbs:[], over:false, t:0,
+     grown:[{who:'dad',x:768,state:'down',t:2.2,h:0,hitT:0},{who:'joe',x:860,state:'down',t:3.6,h:0,hitT:0}], bernie:{x:650,tx:650,jump:0}, quiet:0};
+  if(!G.blocks.length) G.blocks=SLOTS.map(function(s){ return {x:s.x,y:s.y,w:s.w,row:s.row}; });
+  updScore(); setFoot(); }
+function updScore(){ if(!G) return; $('scoreText').textContent= G.phase==='build' ? 'Igloo: '+G.placed+' of '+TOTAL+' blocks' : 'Clara and Bernie '+G.me+' · Dad and Uncle Joe '+G.them; }
+function setFoot(){ var f=G&&G.phase==='fight';
+  $('mainBtn').textContent= f ? 'Hold to throw' : 'Drop the block'; $('aimL').hidden=!f; $('aimR').hidden=!f; $('duckBtn').hidden=!f;
+  $('hint').textContent= f ? 'Aim, hold, let go' : 'Drop it on the glowing spot'; }
+
+/* ---------- input ---------- */
+var keys={}, pointer=null, pointerT=0, aimHeld=0;
+addEventListener('keydown',function(e){ if(!running) return; if([' ','ArrowLeft','ArrowRight','ArrowDown','ArrowUp'].indexOf(e.key)>-1) e.preventDefault(); if(e.repeat) return;
+  if(e.key===' '||e.key==='Enter'&&document.activeElement===cv) pressMain(); if(e.key==='ArrowDown'||e.key==='d') toggleDuck(); if(e.key==='p'||e.key==='Escape') togglePause(); keys[e.key]=true; });
+addEventListener('keyup',function(e){ keys[e.key]=false; if(e.key===' '||e.key==='Enter') releaseMain(); });
+function toV(e){ var r=cv.getBoundingClientRect(); return {x:((e.clientX-r.left)-OX)/SC, y:((e.clientY-r.top)-OY)/SC}; }
+cv.addEventListener('pointermove',function(e){ pointer=toV(e); pointerT=performance.now(); });
+cv.addEventListener('pointerdown',function(e){ if(!running) return; pointer=toV(e); pointerT=performance.now(); try{ cv.setPointerCapture(e.pointerId); }catch(_){} cv.focus(); pressMain(); });
+cv.addEventListener('pointerup',function(){ releaseMain(); });
+(function(){ var b=$('mainBtn'); b.addEventListener('pointerdown',function(e){ e.preventDefault(); pressMain(); }); ['pointerup','pointerleave','pointercancel'].forEach(function(ev){ b.addEventListener(ev,function(){ releaseMain(); }); }); b.addEventListener('keydown',function(e){ if(e.key===' '||e.key==='Enter'){ e.stopPropagation(); e.preventDefault(); if(!e.repeat) pressMain(); } }); b.addEventListener('keyup',function(e){ if(e.key===' '||e.key==='Enter'){ e.stopPropagation(); releaseMain(); } }); })();
+[['aimL',-1],['aimR',1]].forEach(function(p){ var b=$(p[0]); b.addEventListener('pointerdown',function(e){ e.preventDefault(); aimHeld=p[1]; }); ['pointerup','pointerleave','pointercancel'].forEach(function(ev){ b.addEventListener(ev,function(){ if(aimHeld===p[1]) aimHeld=0; }); }); });
+$('duckBtn').addEventListener('click',function(){ toggleDuck(); });
+function pressMain(){ if(!G||paused) return; if(G.phase==='build') dropBlock(); else if(!G.over && !G.duck){ G.holding=true; G.power=0; } }
+function releaseMain(){ if(!G||G.phase!=='fight'||!G.holding) return; G.holding=false; throwBall(); }
+function toggleDuck(){ if(!G||G.phase!=='fight'||G.over) return; G.duck=!G.duck; G.holding=false; $('duckBtn').setAttribute('aria-pressed',G.duck?'true':'false'); $('duckBtn').textContent= G.duck?'Come out':'Duck';
+  caption(G.duck?'[Clara ducks into the igloo tunnel]':'[Clara pops back out]',1400); crunch(); }
+
+/* ---------- part 1: build the igloo ---------- */
+function dropBlock(){ var s=G.slide; if(s.falling||G.done) return; s.falling=true; s.vy=0; whoosh(); }
+function updBuild(dt){
+  var s=G.slide, d=D(), slot=SLOTS[G.placed];
+  if(!slot) return;
+  var lo=IG.x-215, hi=IG.x+215;
+  if(!s.falling){ var near=Math.abs(s.x-slot.x)<slot.w; s.x+=s.dir*d.slide*(near?0.45:1)*dt;   // it slows down over the glowing spot (Tina: blocks kept smashing)
+    if(s.x>hi){ s.x=hi; s.dir=-1; } if(s.x<lo){ s.x=lo; s.dir=1; } }
+  else { s.vy+=900*dt; s.y+=s.vy*dt;
+    if(s.y>=slot.y-IG.bh){ var err=Math.abs(s.x-slot.x)/slot.w;
+      if(err<=d.tol){ G.blocks.push({x:slot.x,y:slot.y,w:slot.w,row:slot.row,squash:0.25}); G.placed++; crunch(); updScore();
+        var perfect=err<0.15; if(perfect) G.perfect++;
+        caption(perfect?'[Crunch] A perfect block!':'[Crunch] The block settles into place.',1600);
+        var nx=SLOTS[G.placed];
+        if(G.placed===TOTAL) finishIgloo();
+        else if(nx && nx.row!==slot.row && nx.row===1) say('dad-build-6',true);
+        else if(nx && nx.row!==slot.row && nx.row===3) say('joe-build-5',true);
+        else if(nx && nx.row===4) say('dad-build-7',true);
+        else if(perfect && Math.random()<0.3) say(pick(['clara-good-1','clara-good-2'])); else if(Math.random()<0.22) say(perfect?pick(['dad-build-3','joe-build-3','joe-build-2']):pick(['dad-build-2','dad-build-4','joe-build-2']));
+      } else { for(var i=0;i<14;i++) G.crumbs.push({x:s.x+(Math.random()-0.5)*30,y:slot.y-IG.bh/2,vx:(Math.random()-0.5)*160,vy:-Math.random()*200,t:0.9}); splat(); caption('[Soft crumble] The block missed the spot and fell apart. Try again.',2000); if(Math.random()<0.6) say(pick(['dad-build-5','joe-build-4'])); else say('clara-crumble-1'); }
+      s.falling=false; s.y=220; s.vy=0; s.x= Math.random()<0.5?lo:hi; s.dir= s.x===lo?1:-1; } }
+  G.blocks.forEach(function(b){ if(b.squash>0) b.squash=Math.max(0,b.squash-dt); });
+}
+/* Tina's pictures on the end screens (2026-11-18) */
+function endPic(src,alt){ var i=$('endPic'); i.src=src; i.alt=alt; i.hidden=false; }
+function finishIgloo(){ G.done=true; chime(); say('dad-build-8',true); say('clara-done-1',true); caption('[Bernie barks and trots straight into the igloo]',2800); setTimeout(function(){ play('woof',0.7); },600); G.bernie.tx=IG.x+40; G.bernie.inside=true;
+  setTimeout(function(){ if(!G||G.phase!=='build') return; endPic('art/igloo-done.jpg','Clara and Bernie peeking out of the finished igloo in the snowy backyard at dusk'); $('endTitle').textContent='The igloo is done!'; $('endScore').textContent= G.perfect>0 ? 'All '+TOTAL+' blocks! '+G.perfect+(G.perfect===1?' was perfect.':' were perfect.') : 'All '+TOTAL+' blocks, and it is standing strong!';
+    $('endNote').textContent='Bernie has already claimed it. Over by the fence, Dad and Uncle Joe are building a snow fort. That can only mean one thing.'; $('againBtn').textContent='Start the snowball fight'; $('rebuildBtn').textContent='Build it again';
+    $('endOver').hidden=false; $('againBtn').focus(); },5200); }
+
+/* ---------- part 2: the snowball fight ---------- */
+var GRAV=620;
+function claraHand(){ return {x:CL.x+6, y:GROUND-82}; }
+function throwBall(){ var h=claraHand(), p=Math.max(0.12,G.power), sp=200+p*400, a=G.aim; G.balls.push({x:h.x,y:h.y,vx:Math.cos(a)*sp,vy:-Math.sin(a)*sp,from:'clara',t:0}); G.power=0; whoosh(); }
+function grownThrow(gr){ var d=D(), fx=gr.x-10, fy=GROUND-120, tx=CL.x+(Math.random()*2-1)*d.err, ty=GROUND-50+(Math.random()*2-1)*d.err*0.4, T=d.flight*(0.9+Math.random()*0.2);
+  G.balls.push({x:fx,y:fy,vx:(tx-fx)/T,vy:(ty-fy-0.5*GRAV*T*T)/T,from:gr.who,t:0}); whoosh();
+  // Bernie may leap up and catch it
+  if(Math.random()<d.catchP){ G.balls[G.balls.length-1].bernie=true; } }
+function updFight(dt){
+  var d=D();
+  if(aimHeld) G.aim=Math.max(0.15,Math.min(1.35,G.aim+aimHeld*dt*0.9));
+  if(keys.ArrowLeft) G.aim=Math.max(0.15,G.aim-dt*0.9); if(keys.ArrowRight) G.aim=Math.min(1.35,G.aim+dt*0.9);
+  if(pointer && performance.now()-pointerT<3000 && !keys.ArrowLeft && !keys.ArrowRight && !aimHeld){ var h=claraHand(), dx=pointer.x-h.x, dy=h.y-pointer.y; if(dx>20) G.aim=Math.max(0.15,Math.min(1.35,Math.atan2(dy,dx))); }
+  if(G.holding){ G.power=Math.min(1,G.power+dt*0.85); }
+  // the grown-ups pop up, wind up, throw, and duck down again
+  var someoneUp=G.grown.some(function(g){ return g.state!=='down'; });
+  G.grown.forEach(function(gr){ gr.t-=dt; gr.hitT=Math.max(0,gr.hitT-dt);
+    if(gr.state==='down'){ gr.h=Math.max(0,gr.h-dt*5); if(gr.t<=0 && !G.over && (d.both||!someoneUp)){ gr.state='up'; gr.t=d.wind; someoneUp=true; } else if(gr.t<=0) gr.t=0.5; }
+    else if(gr.state==='up'){ gr.h=Math.min(1,gr.h+dt*5);
+      if(gr.t<d.wind*0.6 && !gr.warned){ gr.warned=true; caption('['+(gr.who==='dad'?'Dad':'Uncle Joe')+' winds up a snowball]',1500); if(Math.random()<0.15) say(pick([gr.who+'-throw-1',gr.who+'-throw-2'])); else if(S.diff==='easy' && !G.duck && Math.random()<0.4) say('dad-duck-1'); }
+      if(gr.t<=0){ grownThrow(gr); gr.state='after'; gr.t=0.7; gr.warned=false; } }
+    else if(gr.state==='after'){ if(gr.t<=0){ gr.state='down'; gr.t=d.wait[0]+Math.random()*(d.wait[1]-d.wait[0]); } }
+    else if(gr.state==='hit'){ if(gr.t<=0){ gr.state='down'; gr.t=d.wait[0]+Math.random()*(d.wait[1]-d.wait[0])+0.8; } } });
+  // snowballs fly
+  for(var i=G.balls.length-1;i>=0;i--){ var b=G.balls[i]; b.t+=dt; b.vy+=GRAV*dt; b.x+=b.vx*dt; b.y+=b.vy*dt; var gone=false;
+    if(b.from==='clara'){
+      G.grown.forEach(function(gr){ if(gone||gr.h<0.5||gr.state==='hit') return; var top=GROUND-140+(1-gr.h)*70; if(b.x>gr.x-24 && b.x<gr.x+24 && b.y>top && b.y<FORT.top+6){ gone=true; hitGrown(gr); } });
+      if(!gone && b.x>FORT.x0 && b.x<FORT.x1 && b.y>FORT.top){ gone=true; splat(); puffAt(b.x,b.y); var near=G.grown.some(function(gr){ return gr.h>0.3 && Math.abs(b.x-gr.x)<60; }); if(near && Math.random()<0.4) say('joe-close-1'); else caption('[Splat] The snowball hits the fort.',1200); }
+    } else {
+      if(b.bernie && b.x<CL.x+90 && b.x>CL.x+40 && b.y>GROUND-110){ gone=true; G.bernie.jump=0.6; play('woof',0.7); caption('[Bernie leaps and catches the snowball! Crunch.]',2200); say(b.from==='joe'?'joe-bernie-1':'dad-bernie-1'); }
+      else if(!G.duck && b.x<CL.x+18 && b.x>CL.x-18 && b.y>GROUND-96 && b.y<GROUND){ gone=true; splat(); puffAt(b.x,b.y); G.them++; updScore(); G.hitMe=0.8; caption('[Splat] Clara is hit! '+(G.them>=7?'':'Duck next time.'),1800); if(Math.random()<0.3) say(b.from+'-score-1'); else if(Math.random()<0.5) say(pick(['clara-hurt-1','clara-hurt-2'])); checkEnd(); }
+      else if(G.duck && !b.dodged && b.x<CL.x+18 && b.x>CL.x-18 && b.y>GROUND-96 && b.y<GROUND){ b.dodged=true; if(Math.random()<0.4) say('clara-duck-1'); }
+      else if(b.x<CL.x+18 && Math.hypot((b.x-IG.x)/IG.rx,(b.y-GROUND)/(IG.bh*5.2))<1){ gone=true; splat(); puffAt(b.x,b.y); caption(G.duck?'[Thump] The snowball smacks the igloo. Clara is safe inside.':'[Thump] It hits the igloo.',1600); }
+    }
+    if(!gone && (b.y>GROUND+4 || b.x<-40 || b.x>VW+40)){ gone=true; if(b.y>GROUND) puffAt(b.x,GROUND); }
+    if(gone) G.balls.splice(i,1); }
+  var bx=G.bernie; bx.jump=Math.max(0,bx.jump-dt); G.hitMe=Math.max(0,(G.hitMe||0)-dt);
+}
+function hitGrown(gr){ splat(); puffAt(gr.x,GROUND-110); gr.state='hit'; gr.t=1.2; gr.hitT=1.2; G.me++; updScore(); caption('[Splat] Clara hits '+(gr.who==='dad'?'Dad':'Uncle Joe')+'!',1600);
+  if(G.me<7){ var rr2=Math.random(); if(rr2<0.35) say(gr.who==='dad'?'clara-hitDad-1':'clara-hitJoe-1'); else if(rr2<0.7) say(gr.who+'-hit-'+(1+Math.floor(Math.random()*3))); } if(Math.random()<0.4) setTimeout(function(){ play('thump',0.6); },500); checkEnd(); }
+function puffAt(x,y){ for(var i=0;i<12;i++) G.crumbs.push({x:x,y:y,vx:(Math.random()-0.5)*180,vy:-Math.random()*180,t:0.6}); }
+function checkEnd(){ if(G.over) return; if(G.me>=7||G.them>=7){ G.over=true; var won=G.me>=7; TQ=[];
+  if(won) say('clara-win-1',true); say(won?pick(['dad-win-1','joe-win-1']):pick(['dad-lose-1','joe-lose-1']),true); if(won){ chime(); setTimeout(function(){ play('woof',0.7); },400); }
+  setTimeout(function(){ if(won) endPic('art/igloo-win.jpg','Clara and Bernie safe inside the igloo doorway, the sled resting in the snow'); else endPic('art/grownups-win.jpg','Dad and Uncle Joe grinning in the falling snow'); $('endTitle').textContent= won?'Clara and Bernie win!':'The grown-ups win this one'; $('endScore').textContent='Clara and Bernie '+G.me+', Dad and Uncle Joe '+G.them;
+    $('endNote').textContent= won?'Dad waves his mitten like a white flag. Bernie does a lap of the igloo. Cocoa time.':'Everyone is snowy and laughing. Try Easy, or duck into the igloo when they wind up.';
+    $('againBtn').textContent='Another snowball fight'; $('rebuildBtn').textContent='Build a new igloo'; $('endOver').hidden=false; $('againBtn').focus(); },3200); } }
+
+/* ---------- drawing ---------- */
+function V(){ ctx.setTransform(DPR*SC,0,0,DPR*SC,DPR*OX,DPR*OY); }
+function rr(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function drawSky(){ ctx.setTransform(DPR,0,0,DPR,0,0); var g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'#3a3f63'); g.addColorStop(0.55,'#8a6f8f'); g.addColorStop(0.75,'#d9a88a'); g.addColorStop(1,'#cfc6d8'); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#d8d2e4'; ctx.fillRect(0,OY+GROUND*SC,W,H); }
+var YARD=new Image(), YARDok=false; YARD.onload=function(){ YARDok=true; }; YARD.src='art/backyard.jpg';   // Tina's backyard painting (2026-11-18)
+function drawYard(){
+  if(YARDok){ ctx.setTransform(DPR,0,0,DPR,0,0); var sc=Math.max(W/YARD.width,H/YARD.height), iw=YARD.width*sc, ih=YARD.height*sc; ctx.drawImage(YARD,(W-iw)/2,H-ih,iw,ih);
+    ctx.fillStyle='rgba(30,26,46,.18)'; ctx.fillRect(0,0,W,H); V();
+    var sg=ctx.createLinearGradient(0,GROUND-30,0,GROUND+10); sg.addColorStop(0,'rgba(230,225,238,0)'); sg.addColorStop(1,'rgba(230,225,238,.92)'); ctx.fillStyle=sg; ctx.fillRect(-400,GROUND-30,1800,40); ctx.fillStyle='rgba(230,225,238,.92)'; ctx.fillRect(-400,GROUND+10,1800,400); return; }
+  V();
+  // the house and the porch light
+  ctx.fillStyle='#4a3a4e'; ctx.fillRect(-80,250,240,220); ctx.fillStyle='#3a2c3c'; ctx.beginPath(); ctx.moveTo(-100,255); ctx.lineTo(40,170); ctx.lineTo(180,255); ctx.closePath(); ctx.fill();
+  ctx.fillStyle='#f5cf85'; ctx.fillRect(10,300,40,44); ctx.fillRect(90,300,40,44); ctx.fillStyle='rgba(245,207,133,.18)'; ctx.beginPath(); ctx.arc(150,360,90,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#ffe2a0'; ctx.beginPath(); ctx.arc(150,330,6,0,Math.PI*2); ctx.fill();
+  // the fence and pines
+  ctx.fillStyle='#6a5a52'; for(var x=600;x<1010;x+=26){ ctx.fillRect(x,380,14,90); ctx.beginPath(); ctx.moveTo(x,380); ctx.lineTo(x+7,370); ctx.lineTo(x+14,380); ctx.fill(); } ctx.fillRect(590,400,430,8); ctx.fillRect(590,440,430,8);
+  ctx.fillStyle='#ece8f2'; for(var x2=600;x2<1010;x2+=26) ctx.fillRect(x2,372,14,6);
+  [[930,300],[980,330],[560,330]].forEach(function(p){ ctx.fillStyle='#2f4a40'; ctx.beginPath(); ctx.moveTo(p[0],p[1]-110); ctx.lineTo(p[0]-55,p[1]+40); ctx.lineTo(p[0]+55,p[1]+40); ctx.closePath(); ctx.fill(); ctx.fillStyle='#f0ecf4'; ctx.beginPath(); ctx.moveTo(p[0],p[1]-110); ctx.lineTo(p[0]-22,p[1]-50); ctx.lineTo(p[0]+22,p[1]-50); ctx.closePath(); ctx.fill(); });
+  // the snowy ground
+  ctx.fillStyle='#e6e1ee'; ctx.fillRect(-200,GROUND,1400,200); ctx.fillStyle='#d2cbe0'; for(var k=0;k<9;k++){ ctx.beginPath(); ctx.ellipse(60+k*120,GROUND+40+(k%3)*18,70,8,0,0,Math.PI*2); ctx.fill(); }
+}
+function drawIgloo(){
+  // once it is finished, packed snow fills the steps into a smooth dome
+  if(G.blocks.length===TOTAL){ ctx.fillStyle='#ebe8f2'; ctx.beginPath(); ctx.ellipse(IG.x,GROUND,IG.rx-2,IG.bh*5,0,Math.PI,0); ctx.fill(); ctx.strokeStyle='#a9a2c0'; ctx.lineWidth=2; ctx.stroke(); ctx.save(); ctx.beginPath(); ctx.ellipse(IG.x,GROUND,IG.rx-2,IG.bh*5,0,Math.PI,0); ctx.clip(); }
+  G.blocks.forEach(function(b){ var sq=b.squash||0; ctx.fillStyle='#f4f2f8'; rr(b.x-b.w/2+1,b.y-IG.bh+1+sq*8,b.w-2,IG.bh-2-sq*8,5); ctx.fill(); ctx.strokeStyle='#a9a2c0'; ctx.lineWidth=2; ctx.stroke(); });
+  if(G.blocks.length===TOTAL) ctx.restore();
+  // the door tunnel on the right
+  if(G.blocks.length>=7 || G.phase==='fight'){ ctx.fillStyle='#f4f2f8'; rr(IG.x+160,GROUND-66,76,66,26); ctx.fill(); ctx.strokeStyle='#a9a2c0'; ctx.lineWidth=2; ctx.stroke(); ctx.fillStyle='#2b2738'; rr(IG.x+192,GROUND-50,44,50,20); ctx.fill(); }
+}
+/* Tina's painted Clara, Dad, Uncle Joe, Bernie and snow fort (Flow #36-#38, #40, #41; 2026-11-18), cut out of her pictures.
+   The drawn people below stay as a fallback until the pictures load. Clara throwing (#34) is still to come: she stands for now. */
+var PIC={}; ['clara-stand','dad-throw','joe-throw','joe-ready','bernie-jump','snow-fort'].forEach(function(n){ var i=new Image(); i.onload=function(){ PIC[n]=i; }; i.src='art/'+n+'.png'; });
+function paintedFor(o){ if(o.who==='clara') return {im:PIC['clara-stand'],h:124,flip:false};
+  if(o.who==='dad') return {im:PIC['dad-throw'],h:158,flip:o.face===1};   // painted facing left, toward Clara
+  return {im:o.up?PIC['joe-throw']:PIC['joe-ready'],h:156,flip:o.face===1}; }   // winds up only in the fight
+function paintedPerson(x,feetY,o){ var p=paintedFor(o); if(!p.im) return null;
+  var h=p.h, w=h*p.im.width/p.im.height, sink=(o.crouch||0)*h*0.5;
+  ctx.save(); ctx.beginPath(); ctx.rect(x-w,0,w*2,feetY+6); ctx.clip();   // hidden below the snow line when crouching behind the fort
+  ctx.translate(x,feetY+sink); if(p.flip) ctx.scale(-1,1); ctx.drawImage(p.im,-w/2,-h,w,h); ctx.restore();
+  return {hand:{x:x+(p.flip?1:-1)*w*0.3, y:feetY+sink-h*0.85}}; }
+function person(x,feetY,o){  // drawn to match the Basketball game's Clara and Uncle Joe, in winter hats and coats (Tina, 2026-11-18)
+  var painted=paintedPerson(x,feetY,o); if(painted) return painted;
+  var h=(o.h||140)*(1-0.45*(o.crouch||0)), top=feetY-h, f=o.face||1, hr=h*0.105, hx=x, hy=top+h*0.15;
+  // legs and boots
+  ctx.fillStyle=o.pants||'#3a3440'; ctx.fillRect(x-h*0.085,feetY-h*0.4,h*0.07,h*0.4); ctx.fillRect(x+h*0.015,feetY-h*0.4,h*0.07,h*0.4);
+  ctx.fillStyle=o.boots||'#3a2a20'; rr(x-h*0.1,feetY-h*0.06,h*0.095,h*0.06,3); ctx.fill(); rr(x+h*0.005,feetY-h*0.06,h*0.095,h*0.06,3); ctx.fill();
+  // coat with knit or herringbone lines
+  ctx.fillStyle=o.coat; rr(x-h*0.14,top+h*0.25,h*0.28,h*0.4,h*0.07); ctx.fill();
+  ctx.strokeStyle=o.coatLine||'rgba(0,0,0,.18)'; ctx.lineWidth=Math.max(1.5,h*0.012); [-0.06,0,0.06].forEach(function(k){ ctx.beginPath(); ctx.moveTo(x+h*k,top+h*0.3); ctx.lineTo(x+h*k,top+h*0.62); ctx.stroke(); });
+  // arms with mittens: the throwing arm goes up as o.arm rises
+  var ay=top+h*0.31, ar=Math.max(0,Math.min(1,o.arm||0)), hx2=x+f*(h*0.13+h*0.1*(1-ar)), hy2=ay+h*0.2-ar*h*0.42;
+  ctx.strokeStyle=o.coat; ctx.lineWidth=h*0.07; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(x+f*h*0.1,ay); ctx.lineTo(hx2,hy2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x-f*h*0.1,ay); ctx.lineTo(x-f*h*0.16,ay+h*0.2); ctx.stroke();
+  ctx.fillStyle=o.mitten||'#8aa6cf'; ctx.beginPath(); ctx.arc(hx2,hy2,h*0.035,0,Math.PI*2); ctx.arc(x-f*h*0.16,ay+h*0.2,h*0.035,0,Math.PI*2); ctx.fill();
+  // scarf with a hanging end
+  if(o.scarf){ ctx.fillStyle=o.scarf; rr(x-h*0.12,top+h*0.23,h*0.24,h*0.06,h*0.025); ctx.fill(); ctx.fillRect(x-f*h*0.08,top+h*0.26,h*0.055,h*0.17); }
+  // hair behind the face (Clara's braids, curls)
+  if(o.who==='clara'){ ctx.fillStyle=o.hair; [-1,1].forEach(function(k){ ctx.beginPath(); ctx.ellipse(hx+k*hr*0.95,hy+hr*1.25,hr*0.28,hr*0.85,k*0.15,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#e9eef8'; ctx.beginPath(); ctx.arc(hx+k*hr*0.98,hy+hr*2.0,hr*0.22,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#4f74a8'; ctx.beginPath(); ctx.arc(hx+k*hr*1.12,hy+hr*2.05,hr*0.15,0,Math.PI*2); ctx.fill(); ctx.fillStyle=o.hair; }); }
+  // face
+  ctx.fillStyle=o.skin; ctx.beginPath(); ctx.arc(hx,hy,hr,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(230,120,120,.35)'; ctx.beginPath(); ctx.arc(hx-hr*0.5,hy+hr*0.25,hr*0.22,0,Math.PI*2); ctx.arc(hx+hr*0.5,hy+hr*0.25,hr*0.22,0,Math.PI*2); ctx.fill();   // cold pink cheeks
+  if(o.who==='joe'||o.who==='dad'){ ctx.fillStyle=o.hair; for(var i=0;i<7;i++){ ctx.beginPath(); ctx.arc(hx-hr*0.95+i*hr*0.32,hy-hr*0.35+Math.sin(i*1.9)*hr*0.12,hr*0.24,0,Math.PI*2); ctx.fill(); } }   // curls under the hat
+  ctx.fillStyle='#1a1616'; ctx.beginPath(); ctx.arc(hx-hr*0.32+f*hr*0.12,hy-hr*0.05,hr*0.1,0,Math.PI*2); ctx.arc(hx+hr*0.32+f*hr*0.12,hy-hr*0.05,hr*0.1,0,Math.PI*2); ctx.fill();
+  if(o.who==='dad'){ ctx.fillStyle='#5a3424'; ctx.beginPath(); ctx.ellipse(hx+f*hr*0.1,hy+hr*0.38,hr*0.5,hr*0.16,0,0,Math.PI*2); ctx.fill(); }   // Dad's mustache
+  ctx.strokeStyle='#5a3424'; ctx.lineWidth=Math.max(1.2,hr*0.1); ctx.beginPath(); ctx.arc(hx+f*hr*0.1,hy+hr*0.3,hr*0.32,0.2,Math.PI-0.2); ctx.stroke();   // smile
+  // knit hat with a cuff, and a pom-pom
+  ctx.fillStyle=o.hat; ctx.beginPath(); ctx.arc(hx,hy-hr*0.2,hr*1.02,Math.PI,0); ctx.fill(); rr(hx-hr*1.08,hy-hr*0.35,hr*2.16,hr*0.42,hr*0.15); ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,.18)'; ctx.lineWidth=Math.max(1,hr*0.08); for(var j=-3;j<=3;j++){ ctx.beginPath(); ctx.moveTo(hx+j*hr*0.28,hy-hr*0.3); ctx.lineTo(hx+j*hr*0.28,hy+hr*0.02); ctx.stroke(); }
+  if(o.pom){ ctx.fillStyle=o.pomColor||o.hat; ctx.beginPath(); ctx.arc(hx,hy-hr*1.3,hr*0.32,0,Math.PI*2); ctx.fill(); }
+  return {hand:{x:hx2, y:hy2}};
+}
+function drawBernie(x,y,jump,face){ var j=jump>0?Math.sin(jump/0.6*Math.PI)*60:0; y-=j; face=face||-1;
+  if(PIC['bernie-jump']){ var im=PIC['bernie-jump'], w=112, h=w*im.height/im.width; ctx.save(); ctx.translate(x,y+4); if(face<0) ctx.scale(-1,1); ctx.drawImage(im,-w/2,-h,w,h); ctx.restore(); return; }
+  ctx.fillStyle='#f6f4f0'; ctx.beginPath(); ctx.ellipse(x,y-26,30,18,0,0,Math.PI*2); ctx.fill();
+  ctx.fillRect(x-24,y-16,8,16); ctx.fillRect(x+16,y-16,8,16);
+  ctx.beginPath(); ctx.arc(x+face*28,y-40,14,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.ellipse(x+face*38,y-36,9,6,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#2a2222'; ctx.beginPath(); ctx.arc(x+face*46,y-37,3,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(x+face*30,y-44,2,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#e8e2da'; ctx.beginPath(); ctx.ellipse(x+face*20,y-44,5,10,0.4*face,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#d9a23a'; ctx.beginPath(); ctx.arc(x+face*24,y-28,3,0,Math.PI*2); ctx.fill();
+  var wag=Math.sin(performance.now()/120)*0.5; ctx.strokeStyle='#f6f4f0'; ctx.lineWidth=8; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(x-face*28,y-30); ctx.lineTo(x-face*44,y-46+wag*10); ctx.stroke(); }
+var CLARA={who:'clara',coat:'#4f74a8',coatLine:'#3d5f8f',hat:'#c8402c',pom:true,skin:'#e9c4a0',hair:'#6b3a1d',scarf:'#b8383a',pants:'#2f4a7a',mitten:'#8aa6cf',h:112,face:1};
+var DAD={who:'dad',coat:'#7a5232',hat:'#3a3636',skin:'#e6b896',hair:'#6b4a2a',scarf:'#3f6a48',pants:'#4a4038',mitten:'#5a4a3a',h:150,face:-1};
+var JOE={who:'joe',coat:'#2f4f9a',hat:'#b8402c',pom:true,skin:'#c79a72',hair:'#1f1a17',scarf:'#e8e2d4',pants:'#8f9096',boots:'#7a5032',mitten:'#d9a23a',h:146,face:-1};
+function draw(){
+  if(!G) return; drawSky(); drawYard(); V();
+  if(S.calm!=='on'){ ctx.fillStyle='rgba(255,255,255,.75)'; flakes.forEach(function(f){ ctx.beginPath(); ctx.arc(f.x,f.y,f.s,0,Math.PI*2); ctx.fill(); }); }
+  if(G.phase==='build'){
+    drawIgloo();
+    var slot=SLOTS[G.placed];
+    if(slot && !G.done){ var pulse=0.5+0.5*Math.sin(performance.now()/250); ctx.fillStyle='rgba(245,207,133,'+(0.35+0.35*pulse)+')'; rr(slot.x-slot.w/2+2,slot.y-IG.bh+2,slot.w-4,IG.bh-4,5); ctx.fill(); ctx.strokeStyle='#f5cf85'; ctx.lineWidth=3; ctx.setLineDash([6,5]); ctx.stroke(); ctx.setLineDash([]);
+      // a guide line straight down from the sliding block
+      var s=G.slide; ctx.strokeStyle='rgba(42,38,56,.35)'; ctx.lineWidth=2; ctx.setLineDash([4,6]); ctx.beginPath(); ctx.moveTo(s.x,s.y+IG.bh/2); ctx.lineTo(s.x,slot.y-IG.bh); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle='#f4f2f8'; rr(s.x-slot.w/2,s.y-IG.bh/2,slot.w,IG.bh,5); ctx.fill(); ctx.strokeStyle='#7a7296'; ctx.lineWidth=3; ctx.stroke(); }
+    // Dad on the left, Uncle Joe with his snow pile and saw on the right, Clara and Bernie in front
+    person(110,GROUND,Object.assign({},DAD,{face:1,arm:0.2}));
+    ctx.fillStyle='#f0ecf4'; ctx.beginPath(); ctx.ellipse(860,GROUND,90,40,0,Math.PI,0); ctx.fill();
+    person(790,GROUND,Object.assign({},JOE,{arm:0.4+0.3*Math.sin(performance.now()/300)}));
+    person(560,GROUND,Object.assign({},CLARA,{face:-1}));
+    var bb=G.bernie; bb.x+=(bb.tx-bb.x)*0.03; if(!(bb.inside && Math.abs(bb.x-bb.tx)<6)) drawBernie(bb.x,GROUND,0,bb.tx<bb.x?-1:1);
+  } else {
+    drawIgloo();
+    // the fort with Dad and Uncle Joe behind it
+    G.grown.forEach(function(gr){ var o=Object.assign({},gr.who==='dad'?DAD:JOE,{crouch:1-gr.h, up: gr.state==='up', arm: gr.state==='up'? Math.min(1,(D().wind-gr.t)/D().wind+0.2):0.1}); person(gr.x,GROUND,o);
+      if(gr.state==='hit'){ ctx.fillStyle='#ffffff'; ctx.beginPath(); ctx.arc(gr.x+6,GROUND-125,9,0,Math.PI*2); ctx.fill(); } });
+    if(PIC['snow-fort']){ var fi=PIC['snow-fort'], fw=FORT.x1-FORT.x0+50, fh=fw*fi.height/fi.width; ctx.drawImage(fi,(FORT.x0+FORT.x1)/2-fw/2,GROUND+12-fh,fw,fh); }   // Tina's painted fort
+    else { ctx.fillStyle='#f0ecf4'; rr(FORT.x0,FORT.top,FORT.x1-FORT.x0,GROUND-FORT.top+6,12); ctx.fill(); ctx.strokeStyle='#a9a2c0'; ctx.lineWidth=3; ctx.stroke();
+    for(var k=0;k<6;k++){ ctx.strokeStyle='#cfc8de'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(FORT.x0+16+k*33,FORT.top+8); ctx.lineTo(FORT.x0+16+k*33,GROUND); ctx.stroke(); } }
+    // Clara: out by the door, or tucked in the tunnel
+    if(G.duck){ ctx.fillStyle='#c8402c'; ctx.beginPath(); ctx.arc(CL.duckX+12,GROUND-34,11,Math.PI,0); ctx.fill(); }
+    else { var me=person(CL.x,GROUND,Object.assign({},CLARA,{arm:G.holding?0.9:0.3})); if(G.hitMe>0){ ctx.fillStyle='#ffffff'; ctx.beginPath(); ctx.arc(CL.x-4,GROUND-96,8,0,Math.PI*2); ctx.fill(); } }
+    drawBernie(G.bernie.x,GROUND,G.bernie.jump,1);
+    // the throw helper and the power bar
+    if(!G.duck && !G.over){ var h0=claraHand();
+      if(S.guide==='on'){ var p=Math.max(0.12,G.holding?G.power:0.55), sp=200+p*400, vx=Math.cos(G.aim)*sp, vy=-Math.sin(G.aim)*sp; ctx.fillStyle='rgba(42,38,56,.55)';
+        for(var t=0.06;t<1.6;t+=0.06){ var x=h0.x+vx*t, y=h0.y+vy*t+0.5*GRAV*t*t; if(y>GROUND||x>VW) break; ctx.beginPath(); ctx.arc(x,y,3,0,Math.PI*2); ctx.fill(); } }
+      if(G.holding){ ctx.fillStyle='#242424'; rr(CL.x-60,GROUND-160,120,16,8); ctx.fill(); ctx.fillStyle='#f5cf85'; rr(CL.x-58,GROUND-158,116*G.power,12,6); ctx.fill(); } }
+    G.balls.forEach(function(b){ ctx.fillStyle='#ffffff'; ctx.strokeStyle='#a9a2c0'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(b.x,b.y,7,0,Math.PI*2); ctx.fill(); ctx.stroke(); });
+  }
+  ctx.fillStyle='#ffffff'; G.crumbs.forEach(function(c){ ctx.fillRect(c.x-2,c.y-2,5,5); });
+}
+
+/* ---------- loop ---------- */
+function update(dt){ G.t+=dt; bernieT-=dt; if(bernieT<=0){ bernieT=14+Math.random()*12; if(!talking()) bernieNoise(); }
+  if(S.calm!=='on') flakes.forEach(function(f){ f.y+=f.v*dt; f.x+=Math.sin(f.y*0.02)*8*dt; if(f.y>VH){ f.y=-4; f.x=Math.random()*VW; } });
+  for(var i=G.crumbs.length-1;i>=0;i--){ var c=G.crumbs[i]; c.t-=dt; c.vy+=700*dt; c.x+=c.vx*dt; c.y+=c.vy*dt; if(c.t<=0||c.y>GROUND+10) G.crumbs.splice(i,1); }
+  if(G.phase==='build') updBuild(dt); else updFight(dt); }
+function frame(ts){ if(!running) return; var dt=Math.max(0,Math.min(0.05,(ts-last)/1000||0)); last=ts; if(!paused) update(dt); draw(); requestAnimationFrame(frame); }
+function go(){ $('startOver').hidden=true; $('endOver').hidden=true; paused=false; $('pauseBtn').setAttribute('aria-pressed','false'); $('pauseBtn').textContent='Pause';
+  if(!running){ running=true; last=performance.now(); requestAnimationFrame(frame); } if(S.music==='on') safePlay(music); cv.focus(); }
+function hush(){ TQ=[]; clearTimeout(talkT); if(talkV){ talkV.pause(); talkV=null; } busyTill=0; $('talkBox').hidden=true; }
+function startBuild(){ hush(); setTrack('audio/music-igloo-build.mp3'); newBuild(); go(); play('door',0.6); caption('[The back screen door bangs. Crunchy footsteps in fresh snow.]',2600); setTimeout(function(){ play('steps',0.5); },700); say('joe-build-1',true); say('dad-build-1',true); say('clara-build-1',true); }
+function startFight(){ hush(); setTrack(S.diff==='hard'?'audio/music-snowball-hard.mp3':'audio/music-snowball-fight.mp3'); newFight(); go(); G.duck=false; $('duckBtn').setAttribute('aria-pressed','false'); $('duckBtn').textContent='Duck'; caption('[Dad and Uncle Joe crouch behind their snow fort]',2600); say('dad-fight-1',true); say('joe-fight-1',true);   /* Tina: no "You two are going down" */ }
+function togglePause(){ if(!running) return; paused=!paused; $('pauseBtn').setAttribute('aria-pressed',paused?'true':'false'); $('pauseBtn').textContent=paused?'Paused':'Pause'; if(paused){ music.pause(); if(talkV) talkV.pause(); caption('Paused. Press Pause again to keep playing.',3000); } else { if(S.music==='on') safePlay(music); if(talkV) safePlay(talkV); } }
+$('buildBtn').addEventListener('click',startBuild);
+$('fightBtn').addEventListener('click',startFight);
+$('againBtn').addEventListener('click',startFight);
+$('rebuildBtn').addEventListener('click',startBuild);
+$('pauseBtn').addEventListener('click',togglePause);
+$('setBtn').addEventListener('click',function(){ if(running&&!paused) togglePause(); $('setOver').hidden=false; $('setDone').focus(); });
+$('setDone').addEventListener('click',function(){ $('setOver').hidden=true; });
+
+/* testing helpers */
+window.igStep=function(n){ for(var i=0;i<(n||1);i++) update(1/60); draw(); return igPeek(); };
+window.igPeek=function(){ return G&&{phase:G.phase, placed:G.placed, me:G.me, them:G.them, duck:G.duck, balls:G.balls&&G.balls.length, over:G.over, grown:G.grown&&G.grown.map(function(g){return g.state;}), talking:talking()}; };
+window.igG=function(){ return G; }; window.igSlot=function(){ return SLOTS[G.placed]; };
+window.igAutoDrop=function(){ var s=G.slide, slot=SLOTS[G.placed]; if(slot){ s.x=slot.x; dropBlock(); } };
+window.igThrowAt=function(i){ var gr=G.grown[i], h=claraHand(), T=0.9, tx=gr.x, ty=GROUND-110, vx=(tx-h.x)/T, vy=(ty-h.y-0.5*GRAV*T*T)/T; G.balls.push({x:h.x,y:h.y,vx:vx,vy:vy,from:'clara',t:0}); };
+
+newBuild(); apply(); resize();
+})();
+</script>
+<script>/* SMALL-SCREEN start (tools/small_screen.py): Hide panels, Box size, Speech boxes */
+(function(){
+  var r=document.documentElement, P='ig-';
+  function g(k){ try{ return localStorage.getItem(P+k); }catch(e){ return null; } }
+  function s(k,v){ try{ localStorage.setItem(P+k,v); }catch(e){} }
+  var small=(innerWidth<760 || innerHeight<560);
+  var st={ panels:g('panels')||(small?'folded':'open'), box:g('box')||(small?'s':'m'), words:g('wordsbox')||'on' };
+  var bar=document.querySelector('.bar'), btn=document.createElement('button'); btn.id='panelsBtn'; btn.type='button';
+  bar.insertBefore(btn, bar.firstChild);
+  btn.addEventListener('click',function(){ st.panels= st.panels==='folded'?'open':'folded'; s('panels',st.panels); apply(); btn.blur(); });
+  var rows=[['panels','Panels (top bar and buttons)',[['open','Full size'],['folded','Folded small']]],
+            ['box','Speech box size',[['s','Small'],['m','Medium'],['l','Large']]]];
+  if(true) rows.push(['words','Speech boxes',[['on','Show the words'],['off','Voice only']]]);
+  var done=document.getElementById('setDone').closest('.row');
+  rows.forEach(function(row){ var d=document.createElement('div'); d.className='set';
+    d.innerHTML='<b>'+row[1]+'</b><div class="seg" data-k2="'+row[0]+'">'+row[2].map(function(o){ return '<button type="button" data-v2="'+o[0]+'">'+o[1]+'</button>'; }).join('')+'</div>';
+    done.parentNode.insertBefore(d,done);
+    d.querySelector('.seg').addEventListener('click',function(e){ var b=e.target.closest('button'); if(!b) return; st[row[0]]=b.dataset.v2; s(row[0]==='words'?'wordsbox':row[0],b.dataset.v2); apply(); }); });
+  function apply(){
+    r.classList.toggle('compact', st.panels==='folded'); r.setAttribute('data-box',st.box); r.classList.toggle('nobox', st.words==='off');
+    btn.textContent= st.panels==='folded' ? 'Show panels' : 'Hide panels'; btn.setAttribute('aria-expanded', st.panels==='folded'?'false':'true');
+    document.querySelectorAll('.seg[data-k2]').forEach(function(seg){ seg.querySelectorAll('button').forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.v2===st[seg.dataset.k2]?'true':'false'); }); });
+    setTimeout(function(){ dispatchEvent(new Event('resize')); },30);
+  }
+  apply();
+})();
+/* SMALL-SCREEN end */</script>
